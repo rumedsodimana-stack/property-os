@@ -1,0 +1,9 @@
+{
+  "name": "Hotel Singularity OS",
+  "description": "A unified, AI-driven hospitality operating system for 5-star luxury chains. Converges Guest Services, PMS, POS, and IoT into a single Internet Computer (ICP) based architecture.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera",
+    "geolocation"
+  ]
+}

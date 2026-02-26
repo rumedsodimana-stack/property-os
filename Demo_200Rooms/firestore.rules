@@ -1,0 +1,185 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function roleFromClaim() {
+      return request.auth.token.role;
+    }
+
+    function roleFromEmployeeDoc() {
+      return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && (
+        roleFromClaim() == role ||
+        roleFromEmployeeDoc() == role
+      );
+    }
+
+    function hasAnyRole(r1, r2, r3) {
+      return hasRole(r1) || hasRole(r2) || hasRole(r3);
+    }
+
+    function hasOpsLeadership() {
+      return hasAnyRole('GM', 'Manager', 'Supervisor');
+    }
+
+    function hasFinanceLeadership() {
+      return hasAnyRole('GM', 'Manager', 'Finance');
+    }
+
+    function canReadAudit() {
+      return hasOpsLeadership() || hasRole('Finance');
+    }
+
+    function canWriteOperations() {
+      return hasOpsLeadership() ||
+        hasAnyRole('FrontDesk', 'Chef', 'Finance') ||
+        hasRole('Staff');
+    }
+
+    function canWriteFinance() {
+      return hasFinanceLeadership();
+    }
+
+    function canWriteSecurity() {
+      return hasOpsLeadership();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Identity + auth sessions
+    match /employees/{uid} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || hasOpsLeadership());
+      allow write: if hasOpsLeadership();
+    }
+
+    match /users/{uid} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || hasOpsLeadership());
+      allow write: if hasOpsLeadership();
+    }
+
+    match /auth_sessions/{sessionId} {
+      allow read: if hasOpsLeadership() || request.auth.uid == resource.data.userId;
+      allow write: if false; // backend only
+    }
+
+    // Core operations
+    match /reservations/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canWriteOperations();
+    }
+
+    match /rooms/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canWriteOperations();
+    }
+
+    match /folios/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canWriteOperations();
+    }
+
+    // Standardized POS naming for app writes
+    match /posOrders/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canWriteOperations();
+    }
+
+    // Legacy compatibility (server-side integrations)
+    match /pos_orders/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canWriteOperations();
+    }
+
+    match /pos_outbox/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canWriteOperations();
+    }
+
+    // Integrations + payments + audit (backend writes only where sensitive)
+    match /ota_connections_v2/{id} {
+      allow read: if isAuthenticated();
+      allow write: if hasOpsLeadership();
+    }
+
+    match /integration_events/{id} {
+      allow read: if canReadAudit();
+      allow write: if false;
+    }
+
+    match /sync_jobs/{id} {
+      allow read: if hasOpsLeadership();
+      allow write: if false;
+    }
+
+    match /sync_failures/{id} {
+      allow read: if hasOpsLeadership();
+      allow write: if false;
+    }
+
+    match /booking_intents/{id} {
+      allow read: if canWriteOperations();
+      allow write: if false;
+    }
+
+    match /payment_intents/{id} {
+      allow read: if canWriteFinance();
+      allow write: if false;
+    }
+
+    match /payment_events/{id} {
+      allow read: if canWriteFinance();
+      allow write: if false;
+    }
+
+    match /refund_events/{id} {
+      allow read: if canWriteFinance();
+      allow write: if false;
+    }
+
+    match /audit_log/{id} {
+      allow read: if canReadAudit();
+      allow write: if false;
+    }
+
+    match /privileged_actions/{id} {
+      allow read: if hasOpsLeadership();
+      allow write: if false;
+    }
+
+    // Existing collections
+    match /ledgerEntries/{id} {
+      allow read: if canWriteFinance();
+      allow write: if canWriteFinance();
+    }
+
+    match /systemConfig/{docId} {
+      allow read: if hasFinanceLeadership();
+      allow write: if hasRole('GM') || hasRole('Manager');
+    }
+
+    match /hardware_devices/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canWriteSecurity();
+    }
+
+    match /brand_documents/{id} {
+      allow read: if isAuthenticated();
+      allow write: if hasOpsLeadership();
+    }
+
+    match /brand_standards/{id} {
+      allow read: if isAuthenticated();
+      allow write: if hasOpsLeadership();
+    }
+  }
+}

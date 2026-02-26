@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hotel Singularity OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom Scrollbar for Singularity OS */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #09090b; /* zinc-950 */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #3f3f46; /* zinc-700 */
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #7c3aed; /* violet-600 */
+      }
+      body {
+        background-color: #09090b; /* zinc-950 */
+        color: #f4f4f5; /* zinc-100 */
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+    </style>
+
+<link rel="stylesheet" href="/index.css">
+<script>
+  (function () {
+    function showRuntimeError(label, value) {
+      try {
+        var root = document.getElementById('root');
+        var pre = document.createElement('pre');
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.fontSize = '12px';
+        pre.style.lineHeight = '1.5';
+        pre.style.color = '#fecaca';
+        pre.style.background = 'rgba(0,0,0,0.55)';
+        pre.style.border = '1px solid rgba(248,113,113,0.35)';
+        pre.style.borderRadius = '12px';
+        pre.style.padding = '12px';
+        pre.textContent = label + '\n' + String(value || 'Unknown error');
+
+        var box = document.createElement('div');
+        box.style.position = 'fixed';
+        box.style.left = '16px';
+        box.style.right = '16px';
+        box.style.top = '16px';
+        box.style.zIndex = '2147483647';
+        box.style.maxWidth = '960px';
+        box.style.margin = '0 auto';
+        box.style.background = 'rgba(24,24,27,0.95)';
+        box.style.border = '1px solid rgba(248,113,113,0.45)';
+        box.style.borderRadius = '16px';
+        box.style.padding = '14px';
+        box.style.color = '#fff';
+        box.innerHTML = '<div style="font:600 14px system-ui; margin-bottom:8px; color:#fda4af;">Runtime Error Captured</div>';
+        box.appendChild(pre);
+
+        document.body.appendChild(box);
+        if (root && !root.hasChildNodes()) {
+          root.style.minHeight = '100vh';
+        }
+      } catch (e) {
+        console.error('Failed to render runtime error overlay', e);
+      }
+    }
+
+    window.addEventListener('error', function (event) {
+      var message = event && event.error ? (event.error.stack || event.error.message) : event.message;
+      showRuntimeError('window.error', message);
+    });
+
+    window.addEventListener('unhandledrejection', function (event) {
+      var reason = event && event.reason ? (event.reason.stack || event.reason.message || event.reason) : 'Unhandled rejection';
+      showRuntimeError('unhandledrejection', reason);
+    });
+  })();
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

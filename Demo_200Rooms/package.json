@@ -1,0 +1,43 @@
+{
+  "name": "hotel-singularity-os",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:demo": "vite --mode demo --port 3004",
+    "build": "vite build",
+    "preview": "vite preview",
+    "kernel": "node edgeNode/kernel.mjs",
+    "dev:full": "concurrently \"npm run kernel\" \"npm run dev\"",
+    "seed:demo:5star": "node scripts/seedFiveStarBusyDemo.mjs",
+    "install:all": "npm install && npm --prefix Demo_200Rooms install",
+    "dev:both": "concurrently -n main,demo -c cyan,magenta \"npm run dev -- --port 5173\" \"npm --prefix Demo_200Rooms run dev -- --port 5174\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.73.0",
+    "@babel/generator": "^7.29.1",
+    "@babel/parser": "^7.29.0",
+    "@babel/traverse": "^7.29.0",
+    "@babel/types": "^7.29.0",
+    "@google/genai": "^1.38.0",
+    "date-fns": "^3.3.1",
+    "firebase": "^12.9.0",
+    "lucide-react": "^0.562.0",
+    "pdfjs-dist": "^5.4.624",
+    "prettier": "^3.8.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "recharts": "^3.6.0",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.1",
+    "dotenv": "^17.3.1",
+    "firebase-tools": "^15.7.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

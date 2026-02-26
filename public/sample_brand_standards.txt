@@ -1,0 +1,114 @@
+HOTEL SINGULARITY - BRAND STANDARDS 2024
+Summer Season Update
+
+=====================================
+BRAND COLORS
+=====================================
+
+PRIMARY COLOR: #10B981
+(Emerald Green - fresh, vibrant summer aesthetic)
+
+ACCENT COLOR: #F59E0B
+(Amber - warm, welcoming summer tones)
+
+SECONDARY COLOR: #8B5CF6
+(Violet - maintain brand continuity)
+
+=====================================
+OPERATIONAL TIMES
+=====================================
+
+CHECK-IN TIME: 15:00
+CHECK-OUT TIME: 12:00
+
+POOL HOURS: 06:00 - 22:00
+(Extended for summer season)
+
+OUTDOOR DINING HOURS: 11:00 - 23:00
+(Breakfast, lunch, and dinner service)
+
+BEACH AMENITIES: 08:00 - 20:00
+
+=====================================
+SERVICE POLICIES
+=====================================
+
+1. DEPOSIT POLICY
+   - Deposit required before check-in
+   - Amount: $200 or equivalent
+   - Refundable upon checkout inspection
+
+2. ID VERIFICATION
+   - Government-issued photo ID required
+   - Passport for international guests
+   - Verification at check-in mandatory
+
+3. CLEANING SCHEDULE
+   - Daily housekeeping: 10:00 - 16:00
+   - Express turnaround: 30 minutes for checkout rooms
+   - Deep clean frequency: Weekly
+
+4. SUMMER AMENITIES
+   - Complimentary beach towels
+   - Pool lounger reservation system
+   - Outdoor dining priority seating
+   - Seasonal cocktail menu
+
+=====================================
+GUEST EXPERIENCE
+=====================================
+
+WELCOME MESSAGE:
+"Welcome to Hotel Singularity - Your Summer Paradise Awaits"
+
+VIP SERVICES:
+- Premium room assignment
+- Welcome amenities package
+- Priority dining reservations
+- Dedicated concierge
+
+=====================================
+STAFF GUIDELINES
+=====================================
+
+DRESS CODE: Summer Business Casual
+- Light, breathable fabrics
+- Brand color accents encouraged
+- Professional appearance at all times
+
+GUEST INTERACTION:
+- Warm, friendly demeanor
+- Proactive service approach
+- Seasonal activity recommendations
+- Beach and pool information ready
+
+=====================================
+INFRASTRUCTURE
+=====================================
+
+TEMPERATURE SETTINGS:
+- Lobby: 22°C (72°F)
+- Guest Rooms: 21°C (70°F) default
+- Restaurant: 23°C (73°F)
+
+LIGHTING:
+- Bright, natural tones during day
+- Warm ambiance for evening
+- Pool area: Extended until 22:00
+
+=====================================
+SEASONAL NOTES
+=====================================
+
+This update implements our Summer 2024 brand refresh:
+- Vibrant green primary color reflects summer energy
+- Extended service hours for outdoor amenities
+- Enhanced pool and beach services
+- Optimized AC for summer comfort
+
+All systems should adapt automatically.
+Brand Service Bus will notify all modules.
+
+Last Updated: Summer 2024
+Version: 2.0
+Property: Hotel Singularity Global
