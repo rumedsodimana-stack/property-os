@@ -267,7 +267,7 @@ class FileSystemManager {
                 return { success: false, error: 'File not found' };
             }
 
-            const updatedContent = codeGenerator.addImport(currentContent, importStatement);
+            const updatedContent = await codeGenerator.addImport(currentContent, importStatement);
 
             return await this.writeFile(filePath, updatedContent, 'Added import');
         } catch (error: any) {

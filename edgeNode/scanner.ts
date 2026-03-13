@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
 import * as os from 'os';
+import { promisify } from 'util';
 
 // ---------------------------------------------------------------------
 // SINGULARITY OS: TRUE EDGE NODE
@@ -12,15 +13,20 @@ import * as os from 'os';
 // It then pushes these physical devices securely to the database.
 
 // Initialize Firebase Admin (Connecting to local emulator for MVP)
-process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8085';
+if (!process.env.FIRESTORE_EMULATOR_HOST) {
+    process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8085';
+}
 
-// Since we are running locally without a service account for this test,
-// we initialize with a dummy project ID that matches the emulator.
+// Prefer real credentials when available; otherwise fall back to emulator-friendly projectId.
 admin.initializeApp({
-    projectId: 'demo-hotel-singularity'
+    projectId: process.env.GCLOUD_PROJECT || 'demo-hotel-singularity',
+    credential: process.env.GOOGLE_APPLICATION_CREDENTIALS
+        ? admin.credential.applicationDefault()
+        : undefined
 });
 
 const db = admin.firestore();
+const execAsync = promisify(exec);
 
 // Known vendor prefix mapping for aesthetics
 const VENDORS: Record<string, string> = {
@@ -52,11 +58,8 @@ async function scanNetwork() {
     // Determine command based on OS
     const cmd = os.platform() === 'win32' ? 'arp -a' : 'arp -a';
 
-    exec(cmd, async (error, stdout, stderr) => {
-        if (error) {
-            console.error(`❌ [Singularity Edge Node] Failed to scan network: ${error.message}`);
-            return;
-        }
+    try {
+        const { stdout } = await execAsync(cmd);
 
         // Parse ARP table output
         // Example Mac output: ? (192.168.1.1) at 0:25:9c:df:11:22 on en0 ifscope [ethernet]
@@ -89,42 +92,54 @@ async function scanNetwork() {
             const deviceId = `dev_${device.mac.replace(/:/g, '')}`;
             const docRef = db.collection('hardware_devices').doc(deviceId);
 
-            const existingDoc = await docRef.get();
+            try {
+                const existingDoc = await docRef.get();
 
-            if (!existingDoc.exists) {
-                // IT'S A NEW DEVICE! Throw it into Quarantine.
-                console.log(`⚠️  [Singularity Edge Node] NEW ROGUE DEVICE DETECTED: IP ${device.ip}, MAC ${device.mac}. Sending to Quarantine Zone!`);
-                await docRef.set({
-                    type: guessDeviceType(device.mac),
-                    ip: device.ip,
-                    mac: device.mac.toUpperCase(),
-                    model: guessModelName(device.mac),
-                    status: 'QUARANTINE',
-                    lastSeen: new Date().toISOString(),
-                    mappedStation: null
-                });
-            } else {
-                // Update last seen timestamp
-                await docRef.update({
-                    ip: device.ip, // IP might have changed via DHCP
-                    lastSeen: new Date().toISOString()
-                });
+                if (!existingDoc.exists) {
+                    // IT'S A NEW DEVICE! Throw it into Quarantine.
+                    console.log(`⚠️  [Singularity Edge Node] NEW ROGUE DEVICE DETECTED: IP ${device.ip}, MAC ${device.mac}. Sending to Quarantine Zone!`);
+                    await docRef.set({
+                        type: guessDeviceType(device.mac),
+                        ip: device.ip,
+                        mac: device.mac.toUpperCase(),
+                        model: guessModelName(device.mac),
+                        status: 'QUARANTINE',
+                        lastSeen: new Date().toISOString(),
+                        mappedStation: null
+                    });
+                } else {
+                    // Update last seen timestamp
+                    await docRef.update({
+                        ip: device.ip, // IP might have changed via DHCP
+                        lastSeen: new Date().toISOString()
+                    });
+                }
+            } catch (err: any) {
+                console.error(`❌ [Singularity Edge Node] Failed to sync device ${device.mac}:`, err?.message || err);
             }
         }
 
         console.log(`✅ [Singularity Edge Node] Database Sync Complete. Sleeping for 15 seconds...\n`);
-    });
+    } catch (error: any) {
+        console.error(`❌ [Singularity Edge Node] Failed to scan network: ${error?.message || error}`);
+        throw error;
+    }
 }
 
 // Ensure the collection is empty for the demo so we see the dramatic effect
 async function purgeDatabase() {
     console.log(`🧹 [Singularity Edge Node] Purging database for deep scan...`);
-    const snapshot = await db.collection('hardware_devices').get();
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-    });
-    await batch.commit();
+    try {
+        const snapshot = await db.collection('hardware_devices').get();
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+    } catch (err: any) {
+        console.error('❌ [Singularity Edge Node] Failed to purge database:', err?.message || err);
+        throw err;
+    }
 }
 
 // Run the scan loop
@@ -133,11 +148,21 @@ async function runDaemon() {
     console.log(`⚡ SINGULARITY OS EDGE NODE DAEMON STARTED`);
     console.log(`======================================================`);
 
-    await purgeDatabase();
-    await scanNetwork();
+    try {
+        await purgeDatabase();
+        await scanNetwork();
+    } catch (err) {
+        console.error('❌ [Singularity Edge Node] Initial startup failed:', (err as any)?.message || err);
+    }
 
     // Re-scan every 15 seconds
-    setInterval(scanNetwork, 15000);
+    setInterval(async () => {
+        try {
+            await scanNetwork();
+        } catch (err) {
+            console.error('❌ [Singularity Edge Node] Scheduled scan failed:', (err as any)?.message || err);
+        }
+    }, 15000);
 }
 
 runDaemon();

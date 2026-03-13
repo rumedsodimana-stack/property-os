@@ -1,7 +1,11 @@
 import { addItem, queryItems } from '../kernel/firestoreService';
 import { OTA_CHANNELS } from '../../components/configuration/OTAChannels';
 
+const MIGRATION_KEY = 'hs_otachannels_migrated_v1';
+
 export const migrateInitialOTAChannels = async () => {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(MIGRATION_KEY)) return;
+
     try {
         const existingChannels = await queryItems('ota_connections');
         if (existingChannels.length === 0) {
@@ -18,6 +22,7 @@ export const migrateInitialOTAChannels = async () => {
         } else {
             console.log("[Migration] OTA connections already exist in Firestore. Skipping defaults migration.");
         }
+        if (typeof localStorage !== 'undefined') localStorage.setItem(MIGRATION_KEY, '1');
     } catch (error) {
         console.error("[Migration] Failed to migrate default OTA channels:", error);
     }

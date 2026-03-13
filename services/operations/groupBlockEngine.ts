@@ -3,9 +3,9 @@
  * Handles group reservations, rooming lists, pickup tracking, and master billing
  */
 
-import { differenceInDays, format } from 'date-fns';
-import { db } from '../kernel/firebase';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, query, where } from 'firebase/firestore';
+import { differenceInDays } from 'date-fns';
+import { getCollectionRef } from '../kernel/firestoreService';
+import { Timestamp, doc, setDoc, getDoc, getDocs, updateDoc, query, where } from 'firebase/firestore';
 
 // Types
 export interface GroupBlock {
@@ -121,6 +121,43 @@ export class GroupBlockEngine {
         // initialization
     }
 
+    private toDate(value: any): Date {
+        if (value instanceof Date) return value;
+        if (value instanceof Timestamp) return value.toDate();
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+    }
+
+    private hydrateBlock(raw: any): GroupBlock {
+        const roomBlocks = (raw?.roomBlocks ?? []).map((rb: any) => ({
+            roomType: rb.roomType,
+            quantity: Number(rb.quantity ?? 0),
+            pickedUp: Number(rb.pickedUp ?? 0),
+            available: Number(rb.available ?? rb.quantity ?? 0)
+        }));
+
+        const totalRoomsBlocked = roomBlocks.reduce((sum: number, rb: RoomBlock) => sum + rb.quantity, 0);
+        const roomsPickedUp = roomBlocks.reduce((sum: number, rb: RoomBlock) => sum + rb.pickedUp, 0);
+
+        return {
+            ...raw,
+            id: raw.id ?? raw.blockId ?? this.generateId(),
+            dates: {
+                arrivalDate: this.toDate(raw?.dates?.arrivalDate),
+                departureDate: this.toDate(raw?.dates?.departureDate),
+                cutoffDate: this.toDate(raw?.dates?.cutoffDate),
+                releaseDate: raw?.dates?.releaseDate ? this.toDate(raw.dates.releaseDate) : undefined
+            },
+            roomBlocks,
+            stats: {
+                totalRoomsBlocked: totalRoomsBlocked || raw?.stats?.totalRoomsBlocked || 0,
+                roomsPickedUp: roomsPickedUp || raw?.stats?.roomsPickedUp || 0,
+                roomsAvailable: raw?.stats?.roomsAvailable ?? (totalRoomsBlocked - roomsPickedUp),
+                pickupPercentage: raw?.stats?.pickupPercentage ?? (totalRoomsBlocked ? (roomsPickedUp / totalRoomsBlocked) * 100 : 0)
+            }
+        };
+    }
+
     /**
      * Create a new group block
      */
@@ -170,7 +207,7 @@ export class GroupBlockEngine {
         };
 
         // Save to database
-        await setDoc(doc(db, 'groupBlocks', block.id), block);
+        await setDoc(doc(getCollectionRef('groupBlocks'), block.id), block);
 
         // Reserve inventory
         await this.reserveInventory(block);
@@ -210,6 +247,9 @@ export class GroupBlockEngine {
                 // Validate row
                 this.validateRoomingListRow(row);
 
+                const arrivalDate = row.arrivalDate ? this.toDate(row.arrivalDate) : block.dates.arrivalDate;
+                const departureDate = row.departureDate ? this.toDate(row.departureDate) : block.dates.departureDate;
+
                 // Create or find guest
                 let guest = await this.findOrCreateGuest({
                     firstName: row.firstName,
@@ -223,20 +263,20 @@ export class GroupBlockEngine {
                     id: this.generateId(),
                     guestId: guest.id,
                     confirmationNumber: this.generateConfirmation(),
-                    arrivalDate: row.arrivalDate || block.dates.arrivalDate,
-                    departureDate: row.departureDate || block.dates.departureDate,
-                    adults: row.adults || 2,
-                    children: row.children || 0,
-                    roomType: row.roomType,
+                    arrivalDate,
+                    departureDate,
+                    adults: Number(row.adults || 2),
+                    children: Number(row.children || 0),
+                    roomType: row.roomType.trim(),
                     rateCode: block.rateInfo.rateCode,
-                    rateAmount: block.rateInfo.rateOverride,
+                    rateAmount: row.rateAmount ? Number(row.rateAmount) : block.rateInfo.rateOverride,
                     status: 'confirmed',
                     groupBlockId: blockId,
                     specialRequests: row.specialRequests,
                     createdAt: new Date()
                 };
 
-                await setDoc(doc(db, 'reservations', reservation.id), reservation);
+                await setDoc(doc(getCollectionRef('reservations'), reservation.id), reservation);
 
                 // Update block pickup
                 await this.updateBlockPickup(blockId, row.roomType, 1);
@@ -268,7 +308,7 @@ export class GroupBlockEngine {
 
         // Get reservations for this block
         const q = query(
-            collection(db, 'reservations'),
+            getCollectionRef('reservations'),
             where('groupBlockId', '==', blockId),
             where('status', 'in', ['confirmed', 'checked_in'])
         );
@@ -288,12 +328,13 @@ export class GroupBlockEngine {
                 blocked: rb.quantity,
                 pickedUp,
                 available: rb.quantity - pickedUp,
-                pickupPercentage: (pickedUp / rb.quantity) * 100
+                pickupPercentage: rb.quantity ? (pickedUp / rb.quantity) * 100 : 0
             };
         });
 
         const totalPickedUp = reservations.docs.length;
-        const pickupPercentage = (totalPickedUp / block.stats.totalRoomsBlocked) * 100;
+        const totalBlocked = block.stats.totalRoomsBlocked || 1;
+        const pickupPercentage = (totalPickedUp / totalBlocked) * 100;
 
         // Determine trend
         const expectedPickup = this.calculateExpectedPickup(
@@ -355,7 +396,7 @@ export class GroupBlockEngine {
         }
 
         // Update block status
-        await updateDoc(doc(db, 'groupBlocks', blockId), {
+        await updateDoc(doc(getCollectionRef('groupBlocks'), blockId), {
             status: 'actual',
             'dates.releaseDate': today.toISOString(),
             updatedAt: new Date().toISOString()
@@ -386,7 +427,7 @@ export class GroupBlockEngine {
             createdAt: new Date()
         };
 
-        await setDoc(doc(db, 'folios', masterFolio.id), masterFolio);
+        await setDoc(doc(getCollectionRef('folios'), masterFolio.id), masterFolio);
 
         console.log(`✅ Created master folio for ${block.blockCode}`);
 
@@ -396,8 +437,8 @@ export class GroupBlockEngine {
     // Helper methods
 
     private async getBlock(blockId: string): Promise<GroupBlock | null> {
-        const docSnap = await getDoc(doc(db, 'groupBlocks', blockId));
-        return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as GroupBlock : null;
+        const docSnap = await getDoc(doc(getCollectionRef('groupBlocks'), blockId));
+        return docSnap.exists() ? this.hydrateBlock({ id: docSnap.id, ...docSnap.data() }) : null;
     }
 
     private generateBlockCode(groupName: string): string {
@@ -415,17 +456,21 @@ export class GroupBlockEngine {
     }
 
     private parseCSV(csvData: string): any[] {
-        const lines = csvData.trim().split('\n');
+        const lines = csvData.trim().split(/\r?\n/).filter(Boolean);
+        if (!lines.length) return [];
         const headers = lines[0].split(',').map(h => h.trim());
 
-        return lines.slice(1).map(line => {
-            const values = line.split(',').map(v => v.trim());
-            const row: any = {};
-            headers.forEach((header, i) => {
-                row[header] = values[i];
+        return lines
+            .slice(1)
+            .filter(Boolean)
+            .map(line => {
+                const values = line.split(',').map(v => v.trim());
+                const row: any = {};
+                headers.forEach((header, i) => {
+                    row[header] = values[i];
+                });
+                return row;
             });
-            return row;
-        });
     }
 
     private validateRoomingListRow(row: any): void {
@@ -439,7 +484,7 @@ export class GroupBlockEngine {
 
     private async findOrCreateGuest(guestData: any): Promise<any> {
         // Search for existing guest
-        const q = query(collection(db, 'guests'), where('email', '==', guestData.email));
+        const q = query(getCollectionRef('guests'), where('email', '==', guestData.email));
         const existing = await getDocs(q);
 
         if (!existing.empty) {
@@ -453,7 +498,7 @@ export class GroupBlockEngine {
             createdAt: new Date()
         };
 
-        await setDoc(doc(db, 'guests', guest.id), guest);
+        await setDoc(doc(getCollectionRef('guests'), guest.id), guest);
 
         return guest;
     }
@@ -470,10 +515,11 @@ export class GroupBlockEngine {
 
         // Update stats
         block.stats.roomsPickedUp += increment;
-        block.stats.roomsAvailable = block.stats.totalRoomsBlocked - block.stats.roomsPickedUp;
-        block.stats.pickupPercentage = (block.stats.roomsPickedUp / block.stats.totalRoomsBlocked) * 100;
+        const totalBlocked = block.stats.totalRoomsBlocked || roomBlock.quantity || 1;
+        block.stats.roomsAvailable = totalBlocked - block.stats.roomsPickedUp;
+        block.stats.pickupPercentage = (block.stats.roomsPickedUp / totalBlocked) * 100;
 
-        await updateDoc(doc(db, 'groupBlocks', blockId), {
+        await updateDoc(doc(getCollectionRef('groupBlocks'), blockId), {
             roomBlocks: block.roomBlocks,
             stats: block.stats,
             updatedAt: new Date().toISOString()
@@ -491,11 +537,12 @@ export class GroupBlockEngine {
     }
 
     private calculateExpectedPickup(totalRooms: number, daysUntilCutoff: number): number {
+        if (totalRooms <= 0) return 0;
         // Simple linear expectation - adjust based on historical data
         if (daysUntilCutoff <= 0) return 100;
         if (daysUntilCutoff >= 90) return 10;
 
-        return 100 - (daysUntilCutoff / 90) * 90;
+        return Math.min(100, Math.max(0, 100 - (daysUntilCutoff / 90) * 90));
     }
 
     private async sendCutoffNotification(block: GroupBlock): Promise<void> {

@@ -2,7 +2,7 @@
  * Document Parser Service - PDF & OCR
  * 
  * Extracts text, images, and structured data from brand documents.
- * Supports PDFs, images, and scanned documents with OCR.
+ * Supports PDFs, images, markdown/text, and scanned documents with OCR.
  */
 
 import * as pdfjsLib from 'pdfjs-dist';
@@ -113,6 +113,24 @@ class DocumentParser {
             tables: [],
             metadata: {
                 pageCount: 1
+            },
+            structuredData: this.detectStructure(text)
+        };
+    }
+
+    /**
+     * Parse plain text / markdown document
+     */
+    async parseText(file: File): Promise<ParsedDocument> {
+        const text = await file.text();
+
+        return {
+            text,
+            images: [],
+            tables: [],
+            metadata: {
+                pageCount: 1,
+                title: file.name
             },
             structuredData: this.detectStructure(text)
         };

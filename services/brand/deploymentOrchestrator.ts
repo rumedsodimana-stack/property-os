@@ -258,7 +258,7 @@ class DeploymentOrchestrator {
         adaptation: SystemAdaptation
     ): Promise<{ success: boolean; error?: string; backupId?: string }> {
         // Generate validation code
-        const validationCode = codeGenerator.generateValidationStep(
+        const validationCode = await codeGenerator.generateValidationStep(
             `!${adaptation.newValue}`,
             adaptation.proposedChange
         );

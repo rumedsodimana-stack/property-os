@@ -186,7 +186,7 @@ class MultiDimensionalManager {
     private getDepartmentVariation(department: string): any {
         const variations: Record<string, any> = {
             'fnb': {
-                accentColor: '#F59E0B', // Warm amber for food
+                accentColor: 'var(--brand-accent)', // Warm amber for food
                 theme: 'culinary'
             },
             'spa': {

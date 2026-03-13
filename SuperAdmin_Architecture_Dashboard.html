@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SuperAdmin — Architecture & Completeness Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090F;--bg2:#0C111C;--bg3:#111827;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --txt:#E4EAF2;--dim:#6B7A8E;--dimmer:#3A4455;
+  /* Singularity palette */
+  --sv:#7C3AED;--sv2:#6D28D9;--sv-glow:rgba(124,58,237,0.18);
+  --se:#22C55E;--sa:#F59E0B;--sr:#EF4444;--sb:#3B82F6;--st:#14B8A6;
+  /* TravelBook palette */
+  --tv:#C9A84C;--tv2:#E8C96A;--tv-glow:rgba(201,168,76,0.14);
+  --te:#22C55E;--ta:#F59E0B;--tr:#EF4444;
+  --radius:10px;
+  --topbar:52px;--sidebar:240px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;overflow:hidden;height:100vh}
+
+/* ── Shell grid ── */
+.shell{display:grid;grid-template-columns:var(--sidebar) 1fr;grid-template-rows:var(--topbar) 1fr;height:100vh;overflow:hidden}
+
+/* ── Topbar ── */
+.topbar{
+  grid-column:1/-1;
+  background:rgba(7,9,15,0.95);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:0;
+  position:sticky;top:0;z-index:200;
+  backdrop-filter:blur(16px);
+}
+.topbar-left{
+  width:var(--sidebar);
+  flex-shrink:0;
+  display:flex;align-items:center;gap:10px;
+  padding:0 16px;
+  border-right:1px solid var(--border);
+}
+.tb-logo{
+  width:28px;height:28px;background:linear-gradient(135deg,var(--sv),#9333EA);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:800;color:#fff;flex-shrink:0;
+}
+.tb-brand{font-size:12px;font-weight:700;color:#fff}
+.tb-brand small{display:block;font-size:9px;color:var(--sv);letter-spacing:.1em;text-transform:uppercase;font-weight:400}
+.topbar-right{
+  flex:1;display:flex;align-items:center;gap:12px;padding:0 20px;
+}
+.tab-btn{
+  padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);background:transparent;
+  color:var(--dim);transition:all .2s;letter-spacing:.03em;
+}
+.tab-btn:hover{color:var(--txt);border-color:var(--border2)}
+.tab-btn.active-sv{background:var(--sv-glow);border-color:rgba(124,58,237,.4);color:#C4B5FD}
+.tab-btn.active-tv{background:var(--tv-glow);border-color:rgba(201,168,76,.4);color:var(--tv)}
+.tab-btn.active-both{background:rgba(255,255,255,.04);border-color:var(--border2);color:var(--txt)}
+.tb-sep{flex:1}
+.live-badge{
+  display:flex;align-items:center;gap:5px;padding:3px 10px;
+  background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);
+  border-radius:20px;font-size:9px;font-weight:600;color:var(--se);
+  letter-spacing:.06em;text-transform:uppercase;
+}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--se);animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.tb-date{font-size:10px;color:var(--dim)}
+
+/* ── Sidebar ── */
+.sidebar{
+  background:var(--bg2);border-right:1px solid var(--border);
+  overflow-y:auto;padding:12px 0;
+}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
+.s-section{padding:0 10px;margin-bottom:4px}
+.s-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer);padding:6px 8px 4px;font-weight:600}
+.s-item{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;
+  cursor:pointer;transition:all .15s;color:var(--dim);font-size:11.5px;font-weight:500;
+  border:1px solid transparent;margin-bottom:1px;text-decoration:none;
+}
+.s-item:hover{background:rgba(255,255,255,.03);color:var(--txt)}
+.s-item.sv{background:var(--sv-glow);border-color:rgba(124,58,237,.25);color:#C4B5FD}
+.s-item.tv{background:var(--tv-glow);border-color:rgba(201,168,76,.25);color:var(--tv)}
+.s-badge{
+  margin-left:auto;padding:1px 7px;border-radius:10px;
+  font-size:9px;font-weight:700;
+}
+.s-badge.g{background:rgba(34,197,94,.12);color:var(--se)}
+.s-badge.a{background:rgba(245,158,11,.12);color:var(--sa)}
+.s-badge.r{background:rgba(239,68,68,.12);color:var(--sr)}
+
+/* progress ring */
+.ring-wrap{padding:12px;margin:4px 10px 10px;background:rgba(12,17,28,.8);border:1px solid var(--border);border-radius:10px}
+.ring-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:6px;font-weight:500}
+.ring-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.ring-info{flex:1}
+.ring-title{font-size:11px;font-weight:600;color:var(--txt)}
+.ring-sub{font-size:9px;color:var(--dim)}
+.ring-num{font-size:16px;font-weight:800;line-height:1}
+.mini-bar{background:rgba(255,255,255,.06);border-radius:3px;height:4px;margin-top:5px;overflow:hidden}
+.mini-fill{height:100%;border-radius:3px;transition:width 1.2s cubic-bezier(.4,0,.2,1) .3s}
+.fill-sv{background:linear-gradient(90deg,var(--sv),#9333EA)}
+.fill-tv{background:linear-gradient(90deg,#A07830,var(--tv),var(--tv2))}
+
+/* ── Main ── */
+.main{overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
+
+/* ── Split view ── */
+.split-view{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.split-view.full{grid-template-columns:1fr}
+
+/* ── Panel ── */
+.panel{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;
+}
+.panel-hdr{
+  padding:14px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+  background:rgba(12,17,28,.6);
+}
+.panel-accent{width:4px;height:28px;border-radius:2px;flex-shrink:0}
+.accent-sv{background:linear-gradient(180deg,var(--sv),#9333EA)}
+.accent-tv{background:linear-gradient(180deg,#A07830,var(--tv))}
+.panel-title{font-size:13px;font-weight:700;color:var(--txt)}
+.panel-sub{font-size:10px;color:var(--dim);margin-top:1px}
+.panel-pct{margin-left:auto;font-size:20px;font-weight:800}
+.panel-pct.sv{color:var(--sv)}
+.panel-pct.tv{color:var(--tv)}
+.panel-body{padding:14px}
+
+/* ── Component tile grid ── */
+.tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px}
+.tile{
+  background:rgba(255,255,255,.025);border:1px solid var(--border);
+  border-radius:8px;padding:10px 12px;cursor:pointer;
+  transition:all .18s;position:relative;overflow:hidden;
+}
+.tile:hover{background:rgba(255,255,255,.045);border-color:var(--border2);transform:translateY(-1px)}
+.tile.sel{border-color:rgba(124,58,237,.5);background:rgba(124,58,237,.06)}
+.tile.sel-tv{border-color:rgba(201,168,76,.5);background:rgba(201,168,76,.05)}
+.tile-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.tile-icon{font-size:15px}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot.done{background:var(--se);box-shadow:0 0 5px rgba(34,197,94,.5)}
+.dot.wip{background:var(--sa);box-shadow:0 0 5px rgba(245,158,11,.4);animation:blink 2s infinite}
+.dot.plan{background:var(--dimmer)}
+.dot.bug{background:var(--sr);box-shadow:0 0 5px rgba(239,68,68,.4)}
+.tile-name{font-size:11px;font-weight:600;color:var(--txt);margin-bottom:2px;line-height:1.3}
+.tile-tag{font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace;margin-bottom:5px}
+.tile-pct{font-size:10px;font-weight:700;margin-bottom:3px}
+.tile-bar{background:rgba(255,255,255,.06);border-radius:2px;height:2px;overflow:hidden}
+.tile-fill{height:100%;border-radius:2px;transition:width 1.3s cubic-bezier(.4,0,.2,1) .4s}
+
+/* ── Detail drawer ── */
+.drawer{
+  background:rgba(7,9,15,.97);border:1px solid var(--border2);
+  border-radius:var(--radius);overflow:hidden;
+  display:none;animation:slideDown .2s ease;
+}
+.drawer.open{display:block}
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.drawer-hdr{
+  padding:14px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+.drawer-body{padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.drawer-section h4{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;font-weight:600}
+.d-item{
+  display:flex;align-items:flex-start;gap:7px;padding:5px 0;
+  border-bottom:1px solid rgba(255,255,255,.03);font-size:11px;
+  color:rgba(255,255,255,.65);line-height:1.4;
+}
+.d-item:last-child{border-bottom:none}
+.d-check{font-size:9px;flex-shrink:0;margin-top:2px}
+.drawer-close{margin-left:auto;padding:3px 10px;border-radius:6px;background:rgba(255,255,255,.06);border:none;color:var(--dim);cursor:pointer;font-size:10px;transition:all .15s}
+.drawer-close:hover{color:var(--txt);background:rgba(255,255,255,.1)}
+
+/* status badge */
+.status-pill{
+  padding:3px 9px;border-radius:12px;font-size:9px;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;
+}
+.status-pill.done{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--se)}
+.status-pill.wip{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--sa)}
+.status-pill.plan{background:rgba(107,122,142,.12);border:1px solid rgba(107,122,142,.3);color:var(--dim)}
+.status-pill.bug{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:var(--sr)}
+
+/* ── Stats row ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px}
+.stat-n{font-size:26px;font-weight:800;line-height:1;margin-bottom:2px}
+.stat-l{font-size:10px;color:var(--dim);letter-spacing:.04em}
+
+/* ── Audit badges ── */
+.bugs-row{display:flex;flex-wrap:wrap;gap:6px;padding:14px}
+.bug-chip{
+  display:flex;align-items:center;gap:5px;padding:4px 10px;
+  border-radius:6px;font-size:10px;cursor:pointer;transition:all .15s;
+  border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.06);color:#FCA5A5;
+}
+.bug-chip.hi{border-color:rgba(245,158,11,.2);background:rgba(245,158,11,.06);color:#FCD34D}
+.bug-chip.med{border-color:rgba(107,122,142,.2);background:rgba(107,122,142,.06);color:var(--dim)}
+.bug-chip:hover{filter:brightness(1.2);transform:translateY(-1px)}
+
+/* ── Comparison bar ── */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.compare-col{padding:16px}
+.compare-col+.compare-col{border-left:1px solid var(--border)}
+.cmp-title{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.cmp-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cmp-label{font-size:11px;color:var(--dim);width:120px;flex-shrink:0}
+.cmp-bar-wrap{flex:1;background:rgba(255,255,255,.06);border-radius:3px;height:5px;overflow:hidden}
+.cmp-bar-fill{height:100%;border-radius:3px;transition:width 1.4s cubic-bezier(.4,0,.2,1) .5s}
+.cmp-val{font-size:10px;font-weight:700;width:32px;text-align:right;flex-shrink:0}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .split-view{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ── Section header ── */
+.sec-hdr{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.sec-hdr h3{font-size:13px;font-weight:700;color:var(--txt)}
+.sec-hdr p{font-size:10px;color:var(--dim)}
+
+/* ── Layer label ── */
+.layer-tag{
+  display:inline-flex;align-items:center;gap:5px;padding:3px 8px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:6px;font-size:9px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:8px;
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── TOPBAR ── -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="tb-logo">⚡</div>
+    <div class="tb-brand">SuperAdmin<small>Architecture Dashboard</small></div>
+  </div>
+  <div class="topbar-right">
+    <button class="tab-btn active-both" onclick="setTab('both',this)">⊞ Both Systems</button>
+    <button class="tab-btn" onclick="setTab('sv',this)">🌀 Singularity OS</button>
+    <button class="tab-btn" onclick="setTab('tv',this)">🪟 TravelBook Key</button>
+    <div class="tb-sep"></div>
+    <div class="live-badge"><div class="live-dot"></div>Live</div>
+    <span class="tb-date">March 2026</span>
+  </div>
+</header>
+
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar">
+  <!-- Singularity summary -->
+  <div class="ring-wrap">
+    <div class="ring-label">Hotel Singularity OS</div>
+    <div class="ring-row">
+      <div class="ring-info">
+        <div class="ring-title">Overall</div>
+        <div class="ring-sub">35 components · 8 critical bugs</div>
+      </div>
+      <div class="ring-num" style="color:var(--sv)">71%</div>
+    </div>
+    <div class="mini-bar"><div class="mini-fill fill-sv" id="sv-bar" style="width:0%"></div></div>
+  </div>
+
+  <!-- TravelBook summary -->
+  <div class="ring-wrap" style="margin-top:0">
+    <div class="ring-label">TravelBook Glass Key</div>
+    <div class="ring-row">
+      <div class="ring-info">
+        <div class="ring-title">Overall</div>
+        <div class="ring-sub">24 components · concept phase</div>
+      </div>
+      <div class="ring-num" style="color:var(--tv)">68%</div>
+    </div>
+    <div class="mini-bar"><div class="mini-fill fill-tv" id="tv-bar" style="width:0%"></div></div>
+  </div>
+
+  <div class="s-section">
+    <div class="s-label">Singularity Layers</div>
+    <div class="s-item sv" onclick="scrollTo('sv-kernel')">🧬 Kernel <span class="s-badge a">75%</span></div>
+    <div class="s-item" onclick="scrollTo('sv-ai')">🤖 Intelligence AI <span class="s-badge a">62%</span></div>
+    <div class="s-item" onclick="scrollTo('sv-ops')">🏨 Operations <span class="s-badge g">82%</span></div>
+    <div class="s-item" onclick="scrollTo('sv-guest')">👤 Guest Layer <span class="s-badge a">70%</span></div>
+    <div class="s-item" onclick="scrollTo('sv-int')">🔗 Integrations <span class="s-badge a">65%</span></div>
+    <div class="s-item" onclick="scrollTo('sv-infra')">☁️ Infrastructure <span class="s-badge a">72%</span></div>
+  </div>
+
+  <div class="s-section">
+    <div class="s-label">TravelBook Layers</div>
+    <div class="s-item tv" onclick="scrollTo('tb-guest')">👤 Guest Creds <span class="s-badge g">85%</span></div>
+    <div class="s-item" onclick="scrollTo('tb-access')">🚪 Access Ctrl <span class="s-badge a">40%</span></div>
+    <div class="s-item" onclick="scrollTo('tb-kms')">🔑 Security/KMS <span class="s-badge a">60%</span></div>
+    <div class="s-item" onclick="scrollTo('tb-account')">◆ Account/Loyalty <span class="s-badge g">80%</span></div>
+    <div class="s-item" onclick="scrollTo('tb-int')">🔗 Integrations <span class="s-badge r">35%</span></div>
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<main class="main" id="main-content">
+
+  <!-- Global stats -->
+  <div class="stats-row">
+    <div class="stat" style="border-color:rgba(124,58,237,.2)">
+      <div class="stat-n" style="color:var(--sv)">71%</div>
+      <div class="stat-l">Singularity OS — 35 components</div>
+    </div>
+    <div class="stat" style="border-color:rgba(201,168,76,.2)">
+      <div class="stat-n" style="color:var(--tv)">68%</div>
+      <div class="stat-l">TravelBook Key — 24 components</div>
+    </div>
+    <div class="stat" style="border-color:rgba(239,68,68,.2)">
+      <div class="stat-n" style="color:var(--sr)">8</div>
+      <div class="stat-l">Critical bugs (Singularity OS)</div>
+    </div>
+    <div class="stat" style="border-color:rgba(34,197,94,.2)">
+      <div class="stat-n" style="color:var(--se)">59</div>
+      <div class="stat-l">Total components tracked</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SIDE-BY-SIDE PANELS                                    -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="split-view" id="view-both">
+
+    <!-- ── HOTEL SINGULARITY OS ── -->
+    <div>
+      <div class="sec-hdr"><h3>🌀 Hotel Singularity OS</h3><p>React 19 + Vite 6 + Firebase · Production codebase</p></div>
+
+      <!-- Kernel -->
+      <div id="sv-kernel" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#C4B5FD;border-color:rgba(124,58,237,.25)">🧬 Kernel Layer · 75%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('sv-firebase','sv')">
+            <div class="tile-top"><span class="tile-icon">🔥</span><span class="dot wip"></span></div>
+            <div class="tile-name">Firebase Core</div><div class="tile-tag">Auth·Firestore·Functions</div>
+            <div class="tile-pct" style="color:var(--sa)">72%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:72%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-auth','sv')">
+            <div class="tile-top"><span class="tile-icon">🔐</span><span class="dot bug"></span></div>
+            <div class="tile-name">Auth Service</div><div class="tile-tag">JWT·Session·RBAC</div>
+            <div class="tile-pct" style="color:var(--sr)">65%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sr);width:65%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-tenant','sv')">
+            <div class="tile-top"><span class="tile-icon">🏢</span><span class="dot done"></span></div>
+            <div class="tile-name">Tenant Service</div><div class="tile-tag">Multi-property</div>
+            <div class="tile-pct" style="color:var(--se)">88%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:88%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-workflow','sv')">
+            <div class="tile-top"><span class="tile-icon">⚙️</span><span class="dot wip"></span></div>
+            <div class="tile-name">Workflow Engine</div><div class="tile-tag">Rule-based automation</div>
+            <div class="tile-pct" style="color:var(--sa)">70%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:70%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-persistence','sv')">
+            <div class="tile-top"><span class="tile-icon">💾</span><span class="dot done"></span></div>
+            <div class="tile-name">Persistence Layer</div><div class="tile-tag">Firestore ORM</div>
+            <div class="tile-pct" style="color:var(--se)">80%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:80%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-module','sv')">
+            <div class="tile-top"><span class="tile-icon">🧩</span><span class="dot done"></span></div>
+            <div class="tile-name">Module Registry</div><div class="tile-tag">Dynamic loading</div>
+            <div class="tile-pct" style="color:var(--se)">85%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:85%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Intelligence AI -->
+      <div id="sv-ai" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#67E8F9;border-color:rgba(6,182,212,.25)">🤖 Intelligence / AI · 62%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('sv-gemini','sv')">
+            <div class="tile-top"><span class="tile-icon">✨</span><span class="dot bug"></span></div>
+            <div class="tile-name">Gemini Service</div><div class="tile-tag">gemini-1.5-pro</div>
+            <div class="tile-pct" style="color:var(--sr)">55%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sr);width:55%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-agent','sv')">
+            <div class="tile-top"><span class="tile-icon">🕵️</span><span class="dot wip"></span></div>
+            <div class="tile-name">Agent Service</div><div class="tile-tag">Auto-task + sandbox</div>
+            <div class="tile-pct" style="color:var(--sa)">65%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:65%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-revenue','sv')">
+            <div class="tile-top"><span class="tile-icon">📊</span><span class="dot wip"></span></div>
+            <div class="tile-name">Revenue Engine</div><div class="tile-tag">Dynamic pricing</div>
+            <div class="tile-pct" style="color:var(--sa)">70%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:70%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-oracle','sv')">
+            <div class="tile-top"><span class="tile-icon">🔮</span><span class="dot wip"></span></div>
+            <div class="tile-name">Oracle Service</div><div class="tile-tag">Predictive analytics</div>
+            <div class="tile-pct" style="color:var(--sa)">60%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:60%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-bi','sv')">
+            <div class="tile-top"><span class="tile-icon">📈</span><span class="dot plan"></span></div>
+            <div class="tile-name">BI Query Service</div><div class="tile-tag">Smart data pipeline</div>
+            <div class="tile-pct" style="color:var(--dim)">45%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--dimmer);width:45%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-builder','sv')">
+            <div class="tile-top"><span class="tile-icon">🏗️</span><span class="dot wip"></span></div>
+            <div class="tile-name">Builder Studio</div><div class="tile-tag">AI-assisted config</div>
+            <div class="tile-pct" style="color:var(--sa)">62%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:62%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Operations -->
+      <div id="sv-ops" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#86EFAC;border-color:rgba(34,197,94,.25)">🏨 Operations Layer · 82%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('sv-booking','sv')">
+            <div class="tile-top"><span class="tile-icon">📅</span><span class="dot bug"></span></div>
+            <div class="tile-name">Booking Service</div><div class="tile-tag">Reservations + PMS</div>
+            <div class="tile-pct" style="color:var(--sr)">78%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sr);width:78%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-rooms','sv')">
+            <div class="tile-top"><span class="tile-icon">🛏️</span><span class="dot done"></span></div>
+            <div class="tile-name">Room Service</div><div class="tile-tag">Status, housekeeping</div>
+            <div class="tile-pct" style="color:var(--se)">88%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:88%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-frontdesk','sv')">
+            <div class="tile-top"><span class="tile-icon">🏢</span><span class="dot done"></span></div>
+            <div class="tile-name">Front Desk</div><div class="tile-tag">Check-in/out UI</div>
+            <div class="tile-pct" style="color:var(--se)">85%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:85%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-nightaudit','sv')">
+            <div class="tile-top"><span class="tile-icon">🌙</span><span class="dot done"></span></div>
+            <div class="tile-name">Night Audit</div><div class="tile-tag">EOD posting engine</div>
+            <div class="tile-pct" style="color:var(--se)">82%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:82%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-channel','sv')">
+            <div class="tile-top"><span class="tile-icon">📡</span><span class="dot wip"></span></div>
+            <div class="tile-name">Channel Manager</div><div class="tile-tag">OTA rate sync</div>
+            <div class="tile-pct" style="color:var(--sa)">72%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:72%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-finance','sv')">
+            <div class="tile-top"><span class="tile-icon">💰</span><span class="dot done"></span></div>
+            <div class="tile-name">Finance Service</div><div class="tile-tag">Folios, posting</div>
+            <div class="tile-pct" style="color:var(--se)">86%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:86%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Guest Layer -->
+      <div id="sv-guest" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#FDE68A;border-color:rgba(245,158,11,.25)">👤 Guest Layer · 70%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('sv-guestapp','sv')">
+            <div class="tile-top"><span class="tile-icon">📱</span><span class="dot bug"></span></div>
+            <div class="tile-name">Guest App</div><div class="tile-tag">React PWA</div>
+            <div class="tile-pct" style="color:var(--sa)">72%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:72%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-guestkey','sv')">
+            <div class="tile-top"><span class="tile-icon">🗝️</span><span class="dot done"></span></div>
+            <div class="tile-name">Guest Key Service</div><div class="tile-tag">pkpass + NFC</div>
+            <div class="tile-pct" style="color:var(--se)">80%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:80%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-crm','sv')">
+            <div class="tile-top"><span class="tile-icon">💬</span><span class="dot wip"></span></div>
+            <div class="tile-name">CRM Service</div><div class="tile-tag">Guest relationships</div>
+            <div class="tile-pct" style="color:var(--sa)">68%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:68%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-loyalty','sv')">
+            <div class="tile-top"><span class="tile-icon">◆</span><span class="dot done"></span></div>
+            <div class="tile-name">Loyalty Service</div><div class="tile-tag">Tier + points</div>
+            <div class="tile-pct" style="color:var(--se)">82%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:82%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Integrations -->
+      <div id="sv-int" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#99F6E4;border-color:rgba(20,184,166,.25)">🔗 Integrations · 65%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('sv-ota','sv')">
+            <div class="tile-top"><span class="tile-icon">✈️</span><span class="dot wip"></span></div>
+            <div class="tile-name">OTA Service</div><div class="tile-tag">Booking.com·Expedia</div>
+            <div class="tile-pct" style="color:var(--sa)">68%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:68%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-gds','sv')">
+            <div class="tile-top"><span class="tile-icon">🌐</span><span class="dot wip"></span></div>
+            <div class="tile-name">GDS Service</div><div class="tile-tag">Amadeus·Sabre</div>
+            <div class="tile-pct" style="color:var(--sa)">58%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:58%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-stripe','sv')">
+            <div class="tile-top"><span class="tile-icon">💳</span><span class="dot done"></span></div>
+            <div class="tile-name">Stripe Payments</div><div class="tile-tag">Payment processing</div>
+            <div class="tile-pct" style="color:var(--se)">84%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:84%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-iot','sv')">
+            <div class="tile-top"><span class="tile-icon">💡</span><span class="dot plan"></span></div>
+            <div class="tile-name">IoT Hub</div><div class="tile-tag">Smart room controls</div>
+            <div class="tile-pct" style="color:var(--dim)">40%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--dimmer);width:40%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Infrastructure -->
+      <div id="sv-infra" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#BAE6FD;border-color:rgba(59,130,246,.25)">☁️ Infrastructure · 72%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('sv-vite','sv')">
+            <div class="tile-top"><span class="tile-icon">⚡</span><span class="dot done"></span></div>
+            <div class="tile-name">Vite 6 Build</div><div class="tile-tag">Bundler + HMR</div>
+            <div class="tile-pct" style="color:var(--se)">90%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:90%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-hosting','sv')">
+            <div class="tile-top"><span class="tile-icon">🌍</span><span class="dot done"></span></div>
+            <div class="tile-name">Firebase Hosting</div><div class="tile-tag">CDN deployment</div>
+            <div class="tile-pct" style="color:var(--se)">88%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--se);width:88%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-theme','sv')">
+            <div class="tile-top"><span class="tile-icon">🎨</span><span class="dot bug"></span></div>
+            <div class="tile-name">Theme System</div><div class="tile-tag">Multi-theme CSS vars</div>
+            <div class="tile-pct" style="color:var(--sa)">68%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:68%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('sv-monitoring','sv')">
+            <div class="tile-top"><span class="tile-icon">📊</span><span class="dot plan"></span></div>
+            <div class="tile-name">Monitoring</div><div class="tile-tag">Observability</div>
+            <div class="tile-pct" style="color:var(--dim)">30%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--dimmer);width:30%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit bugs -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px">
+        <div class="panel-hdr"><div class="panel-accent accent-sv"></div><div><div class="panel-title">⚠️ Open Audit Findings</div><div class="panel-sub">From March 8 2026 code audit</div></div></div>
+        <div class="bugs-row">
+          <div class="bug-chip" title="Gemini API key fallback uses process.env in browser">🔴 Gemini API key bug</div>
+          <div class="bug-chip" title="Crash on non-standard Gemini API response">🔴 Gemini response crash</div>
+          <div class="bug-chip" title="Firestore path resolution fragile for global collections">🔴 Firestore path bug</div>
+          <div class="bug-chip" title="Login screen crashes if Firebase bootstrap fails">🔴 Firebase null check</div>
+          <div class="bug-chip" title="Silent auth failures, stuck loading state">🔴 Auth restore fail</div>
+          <div class="bug-chip" title="Booking ID type coercion causes collisions">🔴 Booking ID collision</div>
+          <div class="bug-chip hi" title="Memory leak from uncleaned Firestore subscriptions">🟡 Sub memory leak</div>
+          <div class="bug-chip hi" title="OpsApp lazy load error boundary missing">🟡 Missing error boundary</div>
+          <div class="bug-chip hi" title="Housekeeping crashes on null room.floor">🟡 room.floor null crash</div>
+          <div class="bug-chip hi" title="Hardcoded colours ignore theme switching">🟡 Hardcoded colors</div>
+          <div class="bug-chip med" title="No rate limiting on Gemini API calls">⚪ No AI rate limit</div>
+          <div class="bug-chip med" title="No offline support / service worker">⚪ No offline support</div>
+          <div class="bug-chip med" title="Potential XSS in hotel name display">⚪ XSS risk</div>
+          <div class="bug-chip med" title="25 additional medium/low issues in audit">⚪ +25 med/low issues</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── TRAVELBOOK GLASS KEY ── -->
+    <div>
+      <div class="sec-hdr"><h3>🪟 TravelBook Glass Key</h3><p>NFC + Apple Wallet + Loyalty · Concept/Design phase</p></div>
+
+      <!-- Guest credentials -->
+      <div id="tb-guest" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#FDE68A;border-color:rgba(201,168,76,.3)">👤 Guest Credentials · 85%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('tb-glass','tv')">
+            <div class="tile-top"><span class="tile-icon">🪟</span><span class="dot done"></span></div>
+            <div class="tile-name">Glass NFC Card</div><div class="tile-tag">MIFARE DESFire EV3</div>
+            <div class="tile-pct" style="color:var(--se)">95%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:95%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-applewallet','tv')">
+            <div class="tile-top"><span class="tile-icon">🍎</span><span class="dot done"></span></div>
+            <div class="tile-name">Apple Wallet</div><div class="tile-tag">PassKit SDK</div>
+            <div class="tile-pct" style="color:var(--se)">85%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:85%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-googlewallet','tv')">
+            <div class="tile-top"><span class="tile-icon">🤖</span><span class="dot wip"></span></div>
+            <div class="tile-name">Google Wallet</div><div class="tile-tag">Google Pay API</div>
+            <div class="tile-pct" style="color:var(--sa)">60%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:60%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-mobileapp','tv')">
+            <div class="tile-top"><span class="tile-icon">📱</span><span class="dot wip"></span></div>
+            <div class="tile-name">TravelBook App</div><div class="tile-tag">Card + loyalty UI</div>
+            <div class="tile-pct" style="color:var(--sa)">70%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:70%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Access control -->
+      <div id="tb-access" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#93C5FD;border-color:rgba(59,130,246,.25)">🚪 Access Control · 40%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('tb-reader','tv')">
+            <div class="tile-top"><span class="tile-icon">📡</span><span class="dot wip"></span></div>
+            <div class="tile-name">NFC Door Reader</div><div class="tile-tag">ISO 14443 + OSDP v2</div>
+            <div class="tile-pct" style="color:var(--sa)">40%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:40%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-osdp','tv')">
+            <div class="tile-top"><span class="tile-icon">🔌</span><span class="dot wip"></span></div>
+            <div class="tile-name">OSDP Gateway</div><div class="tile-tag">OSDP v2 / Wiegand</div>
+            <div class="tile-pct" style="color:var(--sa)">35%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:35%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-cardwriter','tv')">
+            <div class="tile-top"><span class="tile-icon">✍️</span><span class="dot done"></span></div>
+            <div class="tile-name">Card Writer</div><div class="tile-tag">DESFire write API</div>
+            <div class="tile-pct" style="color:var(--se)">90%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:90%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-auditlog','tv')">
+            <div class="tile-top"><span class="tile-icon">📋</span><span class="dot plan"></span></div>
+            <div class="tile-name">Access Audit Log</div><div class="tile-tag">Event stream/TSDB</div>
+            <div class="tile-pct" style="color:var(--dim)">20%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--dimmer);width:20%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security / KMS -->
+      <div id="tb-kms" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#D8B4FE;border-color:rgba(139,92,246,.25)">🔑 Security / KMS · 60%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('tb-kmsvc','tv')">
+            <div class="tile-top"><span class="tile-icon">🔒</span><span class="dot wip"></span></div>
+            <div class="tile-name">Key Mgmt Service</div><div class="tile-tag">HSM-backed API</div>
+            <div class="tile-pct" style="color:var(--sa)">60%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:60%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-hsm','tv')">
+            <div class="tile-top"><span class="tile-icon">🛡️</span><span class="dot plan"></span></div>
+            <div class="tile-name">HSM Module</div><div class="tile-tag">FIPS 140-2 Lvl 3</div>
+            <div class="tile-pct" style="color:var(--dim)">25%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--dimmer);width:25%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-revoke','tv')">
+            <div class="tile-top"><span class="tile-icon">⛔</span><span class="dot done"></span></div>
+            <div class="tile-name">Revocation Engine</div><div class="tile-tag">&lt;500ms broadcast</div>
+            <div class="tile-pct" style="color:var(--se)">80%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:80%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-token','tv')">
+            <div class="tile-top"><span class="tile-icon">🎫</span><span class="dot done"></span></div>
+            <div class="tile-name">Token Engine</div><div class="tile-tag">CMAC one-time</div>
+            <div class="tile-pct" style="color:var(--se)">90%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:90%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Account / Loyalty -->
+      <div id="tb-account" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#FDE68A;border-color:rgba(201,168,76,.3)">◆ Account / Loyalty · 80%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('tb-accountsvc','tv')">
+            <div class="tile-top"><span class="tile-icon">👤</span><span class="dot done"></span></div>
+            <div class="tile-name">Account Service</div><div class="tile-tag">JWT / OAuth 2.0</div>
+            <div class="tile-pct" style="color:var(--se)">85%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:85%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-loyaltye','tv')">
+            <div class="tile-top"><span class="tile-icon">📈</span><span class="dot wip"></span></div>
+            <div class="tile-name">Loyalty Engine</div><div class="tile-tag">4-tier points ledger</div>
+            <div class="tile-pct" style="color:var(--sa)">70%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:70%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-bookingsvc','tv')">
+            <div class="tile-top"><span class="tile-icon">📅</span><span class="dot done"></span></div>
+            <div class="tile-name">Booking Service</div><div class="tile-tag">Reservation mgmt</div>
+            <div class="tile-pct" style="color:var(--se)">90%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:90%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-passsvc','tv')">
+            <div class="tile-top"><span class="tile-icon">🎟️</span><span class="dot wip"></span></div>
+            <div class="tile-name">Pass Service</div><div class="tile-tag">pkpass builder</div>
+            <div class="tile-pct" style="color:var(--sa)">75%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:75%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Integrations -->
+      <div id="tb-int" style="margin-bottom:14px">
+        <div class="layer-tag" style="color:#99F6E4;border-color:rgba(20,184,166,.25)">🔗 Integration / Infra · 35%</div>
+        <div class="tile-grid">
+          <div class="tile" onclick="openDrawer('tb-pmsbridge','tv')">
+            <div class="tile-top"><span class="tile-icon">🔗</span><span class="dot wip"></span></div>
+            <div class="tile-name">PMS Bridge</div><div class="tile-tag">Opera·Mews·Fidelio</div>
+            <div class="tile-pct" style="color:var(--sa)">55%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--sa);width:55%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-apns','tv')">
+            <div class="tile-top"><span class="tile-icon">🔔</span><span class="dot done"></span></div>
+            <div class="tile-name">APNs / FCM</div><div class="tile-tag">Push delivery</div>
+            <div class="tile-pct" style="color:var(--se)">95%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--tv);width:95%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-partnerapi','tv')">
+            <div class="tile-top"><span class="tile-icon">🌐</span><span class="dot plan"></span></div>
+            <div class="tile-name">Partner API</div><div class="tile-tag">Flights, car hire</div>
+            <div class="tile-pct" style="color:var(--dim)">15%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--dimmer);width:15%"></div></div>
+          </div>
+          <div class="tile" onclick="openDrawer('tb-cloud','tv')">
+            <div class="tile-top"><span class="tile-icon">☁️</span><span class="dot plan"></span></div>
+            <div class="tile-name">Cloud Infra</div><div class="tile-tag">AWS multi-region</div>
+            <div class="tile-pct" style="color:var(--dim)">30%</div>
+            <div class="tile-bar"><div class="tile-fill" style="background:var(--dimmer);width:30%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Key milestones -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px">
+        <div class="panel-hdr"><div class="panel-accent accent-tv"></div><div><div class="panel-title">📋 Key Milestones</div><div class="panel-sub">Concept → Pilot → Full rollout</div></div></div>
+        <div style="padding:12px;display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+            <span class="status-pill done">Done</span>
+            <span style="font-size:11px;color:var(--txt)">Card spec, Wallet design, Loyalty structure, Encryption model</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+            <span class="status-pill wip">In Prog</span>
+            <span style="font-size:11px;color:var(--txt)">KMS API, Booking integration, OSDP gateway, PassKit cert</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+            <span class="status-pill plan">Planned</span>
+            <span style="font-size:11px;color:var(--txt)">Google Wallet, PMS bridge, Pilot property (Jun 2026)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0">
+            <span class="status-pill plan">Planned</span>
+            <span style="font-size:11px;color:var(--txt)">Full rollout, cloud infra, partner API (Sep 2026)</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /split-view -->
+
+  <!-- ── COMPARISON BAR ── -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+    <div class="panel-hdr" style="border-bottom:1px solid var(--border)">
+      <div class="panel-title">⊞ Side-by-Side Completeness</div>
+      <div class="panel-sub" style="margin-left:8px">Both systems per dimension</div>
+    </div>
+    <div class="compare-grid">
+      <div class="compare-col">
+        <div class="cmp-title" style="color:#C4B5FD">🌀 Singularity OS</div>
+        <div class="cmp-row"><span class="cmp-label">Kernel / Auth</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-sv" style="width:75%"></div></div><span class="cmp-val" style="color:var(--sv)">75%</span></div>
+        <div class="cmp-row"><span class="cmp-label">AI Intelligence</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-sv" style="width:62%"></div></div><span class="cmp-val" style="color:var(--sv)">62%</span></div>
+        <div class="cmp-row"><span class="cmp-label">Operations</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-sv" style="width:82%"></div></div><span class="cmp-val" style="color:var(--sv)">82%</span></div>
+        <div class="cmp-row"><span class="cmp-label">Guest Layer</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-sv" style="width:70%"></div></div><span class="cmp-val" style="color:var(--sv)">70%</span></div>
+        <div class="cmp-row"><span class="cmp-label">Integrations</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-sv" style="width:65%"></div></div><span class="cmp-val" style="color:var(--sv)">65%</span></div>
+        <div class="cmp-row"><span class="cmp-label">Infrastructure</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-sv" style="width:72%"></div></div><span class="cmp-val" style="color:var(--sv)">72%</span></div>
+      </div>
+      <div class="compare-col">
+        <div class="cmp-title" style="color:var(--tv)">🪟 TravelBook Key</div>
+        <div class="cmp-row"><span class="cmp-label">Security / KMS</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-tv" style="width:60%"></div></div><span class="cmp-val" style="color:var(--tv)">60%</span></div>
+        <div class="cmp-row"><span class="cmp-label">Guest Creds</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-tv" style="width:85%"></div></div><span class="cmp-val" style="color:var(--tv)">85%</span></div>
+        <div class="cmp-row"><span class="cmp-label">Access Control</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-tv" style="width:40%"></div></div><span class="cmp-val" style="color:var(--tv)">40%</span></div>
+        <div class="cmp-row"><span class="cmp-label">Account/Loyalty</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-tv" style="width:80%"></div></div><span class="cmp-val" style="color:var(--tv)">80%</span></div>
+        <div class="cmp-row"><span class="cmp-label">Integrations</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-tv" style="width:35%"></div></div><span class="cmp-val" style="color:var(--tv)">35%</span></div>
+        <div class="cmp-row"><span class="cmp-label">Cloud / Infra</span><div class="cmp-bar-wrap"><div class="cmp-bar-fill fill-tv" style="width:30%"></div></div><span class="cmp-val" style="color:var(--tv)">30%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:20px"></div>
+</main>
+</div>
+
+<!-- ── DETAIL DRAWER (overlay) ── -->
+<div id="global-drawer" class="drawer" style="position:fixed;bottom:20px;right:20px;width:480px;max-height:55vh;overflow-y:auto;z-index:300">
+  <div class="drawer-hdr">
+    <span id="d-icon" style="font-size:20px">🪟</span>
+    <div>
+      <div id="d-title" style="font-size:13px;font-weight:700;color:var(--txt)">Component</div>
+      <div id="d-sub" style="font-size:10px;color:var(--dim);margin-top:2px">details</div>
+    </div>
+    <span id="d-badge" class="status-pill done" style="margin-left:8px">Done</span>
+    <button class="drawer-close" onclick="closeDrawer()">✕ Close</button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-section">
+      <h4>✓ Completed</h4>
+      <div id="d-done"></div>
+    </div>
+    <div class="drawer-section">
+      <h4>○ Gaps / Remaining</h4>
+      <div id="d-gaps"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Animate bars on load
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    document.getElementById('sv-bar').style.width='71%';
+    document.getElementById('tv-bar').style.width='68%';
+    document.querySelectorAll('.cmp-bar-fill').forEach(el=>{
+      const w=el.style.width; el.style.width='0%';
+      setTimeout(()=>{el.style.width=w;},100);
+    });
+  },300);
+});
+
+// ── Tab switching
+function setTab(mode, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.className='tab-btn');
+  if(mode==='sv') btn.className='tab-btn active-sv';
+  else if(mode==='tv') btn.className='tab-btn active-tv';
+  else btn.className='tab-btn active-both';
+}
+
+// ── Scroll helper
+function scrollTo(id){
+  const el=document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── Detail data
+const D={
+  // Singularity OS
+  'sv-firebase':{icon:'🔥',title:'Firebase Core',sub:'Auth · Firestore · Functions · Hosting',status:'wip',stxt:'⟳ In Progress — 72%',
+    done:['Firebase project configured','Firestore rules implemented','Auth provider set up','Functions deployed','Hosting via CDN active'],
+    gaps:['CRITICAL: Path resolution bug in firestoreService (global collections)','CRITICAL: Bootstrap null check missing at login','Emulator config for local dev needs refinement']},
+  'sv-auth':{icon:'🔐',title:'Auth Service',sub:'JWT · Session · RBAC · Firebase Auth',status:'bug',stxt:'⚠ Critical Bug — 65%',
+    done:['RBAC roles defined (Guest, Staff, GM, DirectorOps)','Session management implemented','Firebase anonymous sign-in for demos','Internal auth service abstraction'],
+    gaps:['CRITICAL: restore() fails silently — stuck loading state','CRITICAL: VITE_SKIP_LOGIN bypass unsafe in prod','OAuth callback error handling incomplete','Token refresh on expiry not tested']},
+  'sv-tenant':{icon:'🏢',title:'Tenant Service',sub:'Multi-property · Property config',status:'done',stxt:'✓ 88%',
+    done:['Multi-property isolation via hotelId','Property config persistence','Tenant switching in SuperAdmin','Property creation/edit flow'],
+    gaps:['Cross-property guest profile merging not built','Property deletion cleanup not implemented']},
+  'sv-workflow':{icon:'⚙️',title:'Workflow Engine',sub:'Rule-based automation',status:'wip',stxt:'⟳ In Progress — 70%',
+    done:['Workflow engine scaffolded','Basic trigger→action rules','Integration with agent service'],
+    gaps:['Complex branching logic not yet complete','Workflow UI editor not built','Persistence of workflow state across restarts']},
+  'sv-persistence':{icon:'💾',title:'Persistence Layer',sub:'Firestore ORM / PmsProvider',status:'done',stxt:'✓ 80%',
+    done:['PmsProvider React context implemented','CRUD helpers for all major collections','Real-time listeners via onSnapshot','Local database fallback'],
+    gaps:['MEDIUM: Unvalidated collection names cause silent failures','Batch write transactions not exposed via helper']},
+  'sv-module':{icon:'🧩',title:'Module Registry',sub:'Dynamic module loading',status:'done',stxt:'✓ 85%',
+    done:['Module registry pattern implemented','Lazy loading with React.lazy + Suspense','SuperAdmin can toggle module visibility','Module metadata typed'],
+    gaps:['Missing error boundary on OpsApp lazy load (HIGH)']},
+  'sv-gemini':{icon:'✨',title:'Gemini Service',sub:'gemini-1.5-pro · AI concierge',status:'bug',stxt:'⚠ Critical Bug — 55%',
+    done:['Gemini 1.5 Pro API integration scaffolded','Prompt templates defined','AI activity logger implemented','Concierge UI in Guest App'],
+    gaps:['CRITICAL: process.env used in browser — API key fails silently','CRITICAL: Crash on non-200 API response (quota, errors)','No rate limiting → cost overrun risk','Error message misleads user ("Singularity AI offline")','No streaming response support']},
+  'sv-agent':{icon:'🕵️',title:'Agent Service',sub:'Autonomous AI agents · sandbox',status:'wip',stxt:'⟳ 65%',
+    done:['Agent sandbox implemented','Agent action gate for safety checks','Agent operating charter defined','Basic task execution pipeline'],
+    gaps:['Agent result persistence not implemented','Multi-step chaining unstable','No timeout/kill mechanism for hung agents']},
+  'sv-revenue':{icon:'📊',title:'Revenue Engine',sub:'Dynamic pricing · yield management',status:'wip',stxt:'⟳ 70%',
+    done:['Revenue automation service scaffolded','Basic yield rules defined','Rate plan service implemented','RevPAR metric tracking'],
+    gaps:['Demand forecasting model not trained','Competitor rate feed not integrated','Yield rule UI shows incorrect data (HIGH)']},
+  'sv-oracle':{icon:'🔮',title:'Oracle Service',sub:'Predictive analytics',status:'wip',stxt:'⟳ 60%',
+    done:['Oracle service scaffolded','Basic prediction models defined','Continuous learning service hooked up'],
+    gaps:['Training data pipeline not complete','Prediction accuracy not validated','Model versioning not implemented']},
+  'sv-bi':{icon:'📈',title:'BI Query Service',sub:'Smart data pipeline',status:'plan',stxt:'◦ 45%',
+    done:['BI query service file exists','Basic query patterns defined'],
+    gaps:['Smart data pipeline not built','Dashboard aggregations hardcoded','No scheduled report delivery','Export functionality not implemented']},
+  'sv-builder':{icon:'🏗️',title:'Builder Studio',sub:'AI-assisted configuration UI',status:'wip',stxt:'⟳ 62%',
+    done:['Builder Studio component exists','AI config service integrated','Brand dashboard in modules'],
+    gaps:['Drag-and-drop builder not implemented','Template library not built','Preview / publish workflow incomplete']},
+  'sv-booking':{icon:'📅',title:'Booking Service',sub:'Reservations + PMS integration',status:'bug',stxt:'⚠ Bug Present — 78%',
+    done:['Reservation CRUD complete','Check-in/check-out flows','Booking engine with availability check','Group block engine','Booking confirmation emails'],
+    gaps:['CRITICAL: Booking ID type coercion causes ID collisions','Multi-room booking edge case unhandled','GDS/OTA sync race condition not resolved']},
+  'sv-rooms':{icon:'🛏️',title:'Room Service',sub:'Status management · housekeeping',status:'done',stxt:'✓ 88%',
+    done:['Room status enum fully defined','Housekeeping workflow implemented','Room assignment logic','Room plan visual UI','Mass assignment modal'],
+    gaps:['HIGH: room.floor null crash in housekeeping view','Floor ordering bug in filter']},
+  'sv-frontdesk':{icon:'🏢',title:'Front Desk',sub:'Check-in/out operations UI',status:'done',stxt:'✓ 85%',
+    done:['Front Desk component complete','Arrivals and departures lists','Check-in flow with room assignment','Guest profile display','Key issuance trigger'],
+    gaps:['MEDIUM: Type assertion returns undefined yield data','Search performance on large properties']},
+  'sv-nightaudit':{icon:'🌙',title:'Night Audit',sub:'End-of-day posting engine',status:'done',stxt:'✓ 82%',
+    done:['Night audit service complete','Folio posting logic','Revenue posting to finance','Audit report generation','Reservation journal service'],
+    gaps:['Edge case: mid-stay rate changes not posted correctly','Audit reversal workflow not implemented']},
+  'sv-channel':{icon:'📡',title:'Channel Manager',sub:'OTA rate and inventory sync',status:'wip',stxt:'⟳ 72%',
+    done:['Channel manager service scaffolded','Booking.com rate plan mapping','Expedia rate plan mapping','OTA adapter pattern'],
+    gaps:['Inventory sync not real-time (polling only)','Rate parity enforcement not automatic','GDS channel manager incomplete']},
+  'sv-finance':{icon:'💰',title:'Finance Service',sub:'Folios · posting · reporting',status:'done',stxt:'✓ 86%',
+    done:['Financial posting service complete','Folio management','Tax rate handling per property','POS-to-folio integration','Finance component in OpsApp'],
+    gaps:['Currency conversion not tested','PDF invoice generation not implemented']},
+  'sv-guestapp':{icon:'📱',title:'Guest App',sub:'React PWA · guest-facing',status:'bug',stxt:'⚠ Bug — 72%',
+    done:['Guest App React component exists','AI concierge chat UI','Booking view','Room service requests','Profile page'],
+    gaps:['MEDIUM: Uncleaned Firestore subscriptions — memory leak','No offline support / service worker','AI features silently fail (Gemini bug)']},
+  'sv-guestkey':{icon:'🗝️',title:'Guest Key Service',sub:'pkpass + NFC issuance',status:'done',stxt:'✓ 80%',
+    done:['Guest key service file implemented','pkpass generation logic','NFC key provisioning hook','Key delivery to guest wallet','Key revocation on checkout'],
+    gaps:['Google Wallet pass not yet generated','Express Mode NFC not tested on physical hardware']},
+  'sv-crm':{icon:'💬',title:'CRM Service',sub:'Guest relationship management',status:'wip',stxt:'⟳ 68%',
+    done:['CRM service and controller implemented','Guest preference tracking','Valence history (sentiment)','CRM dashboard component'],
+    gaps:['Automated guest communication triggers incomplete','Segmentation / campaign tooling not built','CRM sync with external platforms not done']},
+  'sv-loyalty':{icon:'◆',title:'Loyalty Service',sub:'Tier · points · redemption',status:'done',stxt:'✓ 82%',
+    done:['Loyalty service implemented','LoyaltyTier enum (Silver/Gold/Platinum/Diamond)','Points earning on stay events','Tier badge in guest profile','Redemption logic'],
+    gaps:['Partner loyalty redemption not connected','Year-to-date rollover not tested']},
+  'sv-ota':{icon:'✈️',title:'OTA Service',sub:'Booking.com · Expedia integration',status:'wip',stxt:'⟳ 68%',
+    done:['OTA service file exists','Booking.com rate plan mapping','Expedia rate plan mapping','OTA adapter service'],
+    gaps:['Two-way inventory sync not complete','Cancellation feed not handled','Rate parity monitoring not automated']},
+  'sv-gds':{icon:'🌐',title:'GDS Service',sub:'Amadeus · Sabre distribution',status:'wip',stxt:'⟳ 58%',
+    done:['GDS service file exists','Amadeus/Sabre channel types defined','Pseudo-city code mapping'],
+    gaps:['Live Amadeus API connection not tested','Sabre booking retrieval not implemented','GDS error code mapping incomplete']},
+  'sv-stripe':{icon:'💳',title:'Stripe Payments',sub:'Payment processing',status:'done',stxt:'✓ 84%',
+    done:['Stripe service integrated','Payment intent creation','Card tokenisation','Refund handling','Webhook event processing'],
+    gaps:['3D Secure flow not fully tested','Multi-currency settlement not validated']},
+  'sv-iot':{icon:'💡',title:'IoT Hub',sub:'Smart room controls',status:'plan',stxt:'◦ 40%',
+    done:['IoT Hub file scaffolded','Basic room control interface defined'],
+    gaps:['No real IoT device integration','Room state synchronisation not built','MQTT/WebSocket protocol not connected','Guest-facing controls in app not implemented']},
+  'sv-vite':{icon:'⚡',title:'Vite 6 Build',sub:'Bundler + HMR',status:'done',stxt:'✓ 90%',
+    done:['Vite 6 configured','Code splitting by app (OpsApp, GuestApp, SuperAdminApp)','TypeScript strict mode','Environment variable handling'],
+    gaps:['LOW: CORS proxy config may fail in some setups','Bundle size not yet optimised (vendor chunks large)']},
+  'sv-hosting':{icon:'🌍',title:'Firebase Hosting',sub:'CDN deployment',status:'done',stxt:'✓ 88%',
+    done:['Firebase Hosting configured','Multi-target deploys (dist, Demo_200Rooms)','Deploy script ready','Cache rules configured'],
+    gaps:['Staging vs prod environment separation not formalised','Rollback procedure not documented']},
+  'sv-theme':{icon:'🎨',title:'Theme System',sub:'Multi-theme CSS custom properties',status:'bug',stxt:'⚠ Bug — 68%',
+    done:['ThemeContext implemented','Multiple themes defined (Light, Dark, etc.)','Brand colour sync component','BrandColorsSync for dynamic theming'],
+    gaps:['HIGH: OpsApp hardcoded colours ignore theme switching','MEDIUM: ThemeSwitcher missing validation → undefined class','Brand colour not applied to all components']},
+  'sv-monitoring':{icon:'📊',title:'Monitoring',sub:'Observability · error tracking',status:'plan',stxt:'◦ 30%',
+    done:['Basic console error logging','Firebase Functions error reporting'],
+    gaps:['No Sentry / Datadog integration','No uptime monitoring','No performance profiling','No alerting system']},
+
+  // TravelBook
+  'tb-glass':{icon:'🪟',title:'Glass NFC Card',sub:'MIFARE DESFire EV3 · ISO/IEC 14443 · 13.56 MHz',status:'done',stxt:'✓ 95%',
+    done:['CR80 borosilicate glass spec defined','NXP MIFARE DESFire EV3 chip selected','AES-128 + 3DES encryption scheme','ADF structure (4 applications)','CMAC key diversification (AN10922)','Laser engraving personalisation','Transport key provisioning flow'],
+    gaps:['Supplier contract not signed','Physical sample not received']},
+  'tb-applewallet':{icon:'🍎',title:'Apple Wallet Pass',sub:'PassKit · boardingPass type · Express Mode NFC',status:'done',stxt:'✓ 85%',
+    done:['pass.json schema fully defined','All pass fields mapped','NFC Express Mode payload designed','APNs push update triggers specified','PDF417 barcode fallback','Pass expiration logic'],
+    gaps:['PassKit certificate application pending','APNs integration not live-tested','Pass update webhook not built']},
+  'tb-googlewallet':{icon:'🤖',title:'Google Wallet',sub:'Google Pay API · Android',status:'wip',stxt:'⟳ 60%',
+    done:['Google Wallet API version selected','Generic pass schema drafted','FCM push flow designed'],
+    gaps:['Google Pay merchant account not registered','Pass class not yet submitted','Android NFC Express Mode not configured','QA on Android devices not started']},
+  'tb-mobileapp':{icon:'📱',title:'TravelBook App',sub:'React Native · iOS + Android',status:'wip',stxt:'⟳ 70%',
+    done:['Booking flow UI complete','Account/loyalty dashboard designed','Card management wireframes','Apple Wallet "Add" button integrated','Push notification handling'],
+    gaps:['NFC card status screen not built','Loyalty redemption UI pending','Google Wallet integration pending','Card revocation UI pending']},
+  'tb-reader':{icon:'📡',title:'NFC Door Reader',sub:'ISO 14443 Type A · OSDP v2',status:'wip',stxt:'⟳ 40%',
+    done:['Hardware spec defined','MIFARE DESFire EV3 support confirmed','ISO 14443 Type A compliance verified'],
+    gaps:['Supplier not finalised','OSDP v2 firmware not configured','Apple PassKit NFC module not tested','Per-property install spec not written','Offline fallback not designed']},
+  'tb-osdp':{icon:'🔌',title:'OSDP Gateway',sub:'OSDP v2 / Wiegand bridge',status:'wip',stxt:'⟳ 35%',
+    done:['OSDP v2 protocol version selected','Gateway hardware form factor defined'],
+    gaps:['Firmware development not started','Wiegand legacy bridge not designed','KMS WebSocket integration not built','Multi-property routing not designed','Failover mode not specified']},
+  'tb-cardwriter':{icon:'✍️',title:'Card Writer Terminal',sub:'DESFire Write API · front desk',status:'done',stxt:'✓ 90%',
+    done:['Terminal hardware selected (ACR1252U)','DESFire write sequence documented','Key handle injection process designed','Guest data write spec complete','PMS check-in trigger defined','Staff UI wireframe done'],
+    gaps:['Terminal SDK integration not yet built']},
+  'tb-auditlog':{icon:'📋',title:'Access Audit Log',sub:'Event stream · TimeSeries DB',status:'plan',stxt:'◦ 20%',
+    done:['Audit log schema defined','Log retention policy documented'],
+    gaps:['Log storage (TimeSeries DB) not chosen','Log ingestion pipeline not built','Dashboard not designed','Anomaly alerting not specified']},
+  'tb-kmsvc':{icon:'🔒',title:'Key Mgmt Service',sub:'HSM-backed · key lifecycle API',status:'wip',stxt:'⟳ 60%',
+    done:['KMS API endpoints specified','Key diversification algorithm documented','JWT + OAuth 2.0 auth model','Key validity window model designed'],
+    gaps:['HSM provider not selected','KMS implementation not started','OSDP gateway key sync not built','Multi-property namespace not designed']},
+  'tb-hsm':{icon:'🛡️',title:'HSM Module',sub:'FIPS 140-2 Level 3',status:'plan',stxt:'◦ 25%',
+    done:['FIPS 140-2 Level 3 requirement set'],
+    gaps:['Vendor evaluation not started','Master key ceremony not planned','Cloud HSM vs on-prem decision pending','Key backup & recovery not written']},
+  'tb-revoke':{icon:'⛔',title:'Revocation Engine',sub:'<500ms broadcast · WebSocket',status:'done',stxt:'✓ 80%',
+    done:['Revocation triggers enumerated','WebSocket broadcast protocol designed','<500ms SLA defined','Reader cache invalidation model designed','Guest re-issue flow documented'],
+    gaps:['Load testing at high volume not done','Offline reader handling not fully specified']},
+  'tb-token':{icon:'🎫',title:'Token Engine',sub:'CMAC one-time · replay prevention',status:'done',stxt:'✓ 90%',
+    done:['CMAC one-time token scheme documented','Monotonic counter (replay prevention)','Session key derivation spec','Token validation flow at door reader','Lost card counter sync handled'],
+    gaps:['Implementation not yet started']},
+  'tb-accountsvc':{icon:'👤',title:'Account Service',sub:'JWT / OAuth 2.0 · guest identity',status:'done',stxt:'✓ 85%',
+    done:['JWT + OAuth 2.0 auth model','Guest identity schema','Card-to-account binding model','GDPR data minimisation','Account UUID as primary key'],
+    gaps:['Multi-property profile merging not designed','GDPR deletion flow not fully specified']},
+  'tb-loyaltye':{icon:'📈',title:'Loyalty Engine',sub:'4-tier real-time points',status:'wip',stxt:'⟳ 70%',
+    done:['Tier structure defined (Silver/Gold/Platinum/Diamond)','Points multiplier rules','Earning events enumerated','Redemption scheme defined','Tier qualification thresholds'],
+    gaps:['Loyalty microservice not implemented','Points ledger DB design not started','Tier downgrade/anniversary rules pending']},
+  'tb-bookingsvc':{icon:'📅',title:'Booking Service',sub:'Reservation management · T-24h key trigger',status:'done',stxt:'✓ 90%',
+    done:['Booking data model defined','T-24h key provisioning trigger','PMS webhook contract specified','Check-in/out lifecycle mapped','Room-to-key binding specified'],
+    gaps:['Multi-room (suite) booking edge case unhandled']},
+  'tb-passsvc':{icon:'🎟️',title:'Pass Service',sub:'pkpass builder · APNs delivery',status:'wip',stxt:'⟳ 75%',
+    done:['pkpass bundle structure specified','Signing cert requirements documented','APNs triggers defined','Pass update event types enumerated','PDF417 fallback specified'],
+    gaps:['Service implementation not started','Pass signing infrastructure not built','Google Wallet builder not designed']},
+  'tb-pmsbridge':{icon:'🔗',title:'PMS Bridge',sub:'Opera / Mews / Fidelio',status:'wip',stxt:'⟳ 55%',
+    done:['PMS event types identified','Webhook contract spec drafted','Opera Cloud API compatibility checked'],
+    gaps:['Connector implementation not started','Mews/Fidelio adapter not designed','Retry/error logic not specified']},
+  'tb-apns':{icon:'🔔',title:'APNs / FCM',sub:'Push notification delivery',status:'done',stxt:'✓ 95%',
+    done:['APNs HTTP/2 provider API selected','FCM v1 API for Android','Notification payload schemas','Topic-based targeting','Wallet pass update push flow','Error handling for invalid tokens'],
+    gaps:['Production APNs certificate not yet obtained']},
+  'tb-partnerapi':{icon:'🌐',title:'Partner API',sub:'Flights · car hire · dining',status:'plan',stxt:'◦ 15%',
+    done:['Partner redemption categories defined'],
+    gaps:['No partner agreements signed','API connector not designed','Points conversion rate not finalised','Partner portal not built']},
+  'tb-cloud':{icon:'☁️',title:'Cloud Infra',sub:'AWS multi-region · KMS hosting',status:'plan',stxt:'◦ 30%',
+    done:['AWS selected as cloud provider','Multi-region requirement documented'],
+    gaps:['Infrastructure as code not written','Failover architecture not designed','DR plan not documented','Security group rules not defined','CI/CD pipeline not configured']},
+};
+
+function openDrawer(id, system){
+  const d=D[id]; if(!d) return;
+  document.getElementById('d-icon').textContent=d.icon;
+  document.getElementById('d-title').textContent=d.title;
+  document.getElementById('d-sub').textContent=d.sub;
+  const badge=document.getElementById('d-badge');
+  const cls={done:'done',wip:'wip',plan:'plan',bug:'bug'}[d.status]||'plan';
+  badge.className='status-pill '+cls;
+  badge.textContent=d.stxt;
+  const doneEl=document.getElementById('d-done'); doneEl.innerHTML='';
+  d.done.forEach(t=>{
+    const el=document.createElement('div'); el.className='d-item';
+    el.innerHTML=`<span class="d-check" style="color:var(--se)">✓</span>${t}`;
+    doneEl.appendChild(el);
+  });
+  const gapsEl=document.getElementById('d-gaps'); gapsEl.innerHTML='';
+  d.gaps.forEach(t=>{
+    const el=document.createElement('div'); el.className='d-item';
+    const col=t.startsWith('CRITICAL')||t.startsWith('HIGH')?'var(--sr)':'var(--sa)';
+    el.innerHTML=`<span class="d-check" style="color:${col}">○</span>${t}`;
+    gapsEl.appendChild(el);
+  });
+  const drawer=document.getElementById('global-drawer');
+  drawer.className='drawer open';
+  // Colour accent by system
+  drawer.style.borderColor=system==='tv'?'rgba(201,168,76,.4)':'rgba(124,58,237,.4)';
+  // Mark tile selected
+  document.querySelectorAll('.tile').forEach(t=>t.classList.remove('sel','sel-tv'));
+  if(event && event.currentTarget){
+    event.currentTarget.classList.add(system==='tv'?'sel-tv':'sel');
+  }
+}
+function closeDrawer(){
+  document.getElementById('global-drawer').className='drawer';
+  document.querySelectorAll('.tile').forEach(t=>t.classList.remove('sel','sel-tv'));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelBook Hotels — Tech Architecture & Completeness</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:      #080E1A;
+  --navy-mid:  #0A1F3C;
+  --navy-lite: #0F2A52;
+  --gold:      #C9A84C;
+  --gold-dim:  rgba(201,168,76,0.18);
+  --gold-glow: rgba(201,168,76,0.08);
+  --white:     #FFFFFF;
+  --dim:       #8899AA;
+  --border:    rgba(255,255,255,0.07);
+  --green:     #22C55E;
+  --amber:     #F59E0B;
+  --red:       #EF4444;
+  --blue:      #3B82F6;
+  --purple:    #8B5CF6;
+  --teal:      #14B8A6;
+  --radius:    12px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--navy);
+  color: var(--white);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── Layout ── */
+.shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: 56px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Top Bar ── */
+.topbar {
+  grid-column: 1 / -1;
+  background: rgba(8,14,26,0.95);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-logo {
+  width: 30px; height: 30px;
+  background: var(--gold);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; color: var(--navy);
+}
+
+.topbar-name { font-weight: 600; font-size: 13px; color: var(--white); }
+.topbar-sub  { font-size: 10px; color: var(--gold); letter-spacing: .1em; text-transform: uppercase; }
+
+.topbar-sep { flex: 1; }
+
+.topbar-tag {
+  background: rgba(34,197,94,0.12);
+  border: 1px solid rgba(34,197,94,0.25);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.topbar-date { font-size: 10px; color: var(--dim); }
+
+/* ── Sidebar ── */
+.sidebar {
+  background: rgba(8,14,26,0.8);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px 0;
+}
+
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--navy-lite); border-radius: 2px; }
+
+.sidebar-section { padding: 0 12px; margin-bottom: 8px; }
+
+.sidebar-label {
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 0 8px;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .15s;
+  margin-bottom: 2px;
+  text-decoration: none;
+  color: var(--dim);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.nav-item:hover {
+  background: rgba(255,255,255,0.04);
+  color: var(--white);
+}
+
+.nav-item.active {
+  background: rgba(201,168,76,0.08);
+  border-color: rgba(201,168,76,0.2);
+  color: var(--gold);
+}
+
+.nav-icon { font-size: 14px; flex-shrink: 0; }
+
+.nav-badge {
+  margin-left: auto;
+  background: rgba(34,197,94,0.15);
+  border: 1px solid rgba(34,197,94,0.3);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--green);
+}
+
+.nav-badge.amber {
+  background: rgba(245,158,11,0.15);
+  border-color: rgba(245,158,11,0.3);
+  color: var(--amber);
+}
+
+.nav-badge.red {
+  background: rgba(239,68,68,0.15);
+  border-color: rgba(239,68,68,0.3);
+  color: var(--red);
+}
+
+/* Overall progress */
+.overall-progress {
+  margin: 12px;
+  background: rgba(15,42,82,0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.overall-label {
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+
+.overall-num {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+  font-family: 'Inter', sans-serif;
+}
+
+.overall-num span { font-size: 13px; color: var(--dim); font-weight: 400; }
+
+.prog-bar-wrap {
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  height: 5px;
+  margin: 8px 0 4px;
+  overflow: hidden;
+}
+
+.prog-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--gold), #E8C96A);
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+
+.prog-sub { font-size: 10px; color: var(--dim); }
+
+/* ── Main ── */
+.main {
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.main::-webkit-scrollbar { width: 4px; }
+.main::-webkit-scrollbar-thumb { background: var(--navy-lite); border-radius: 2px; }
+
+/* ── Section header ── */
+.section-hdr {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.section-hdr h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.section-hdr p {
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* ── Architecture diagram ── */
+.arch-diagram {
+  background: rgba(10,18,30,0.6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.arch-diagram::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 40% 30% at 20% 50%, rgba(201,168,76,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 40% at 80% 20%, rgba(59,130,246,0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ── Layer row ── */
+.layers {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.layer-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 16px 0;
+  position: relative;
+}
+
+.layer-row + .layer-row {
+  border-top: 1px dashed rgba(255,255,255,0.06);
+}
+
+.layer-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding-top: 6px;
+}
+
+.layer-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.layer-icon { font-size: 18px; }
+
+.layer-desc {
+  font-size: 9px;
+  color: var(--dim);
+  line-height: 1.4;
+  max-width: 100px;
+}
+
+/* ── Component cards ── */
+.component-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.comp-card {
+  background: rgba(15,42,82,0.5);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
+  flex: 0 0 auto;
+  min-width: 150px;
+  max-width: 190px;
+  position: relative;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.comp-card:hover {
+  border-color: rgba(201,168,76,0.3);
+  background: rgba(20,55,100,0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.comp-card.selected {
+  border-color: var(--gold);
+  background: rgba(201,168,76,0.06);
+}
+
+.comp-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.comp-icon { font-size: 16px; }
+
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.done    { background: var(--green); box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+.status-dot.wip     { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,0.5); animation: pulse-amber 2s infinite; }
+.status-dot.planned { background: var(--dim); }
+.status-dot.blocked { background: var(--red); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+
+@keyframes pulse-amber {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.comp-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 3px;
+  line-height: 1.3;
+}
+
+.comp-tag {
+  font-size: 9px;
+  color: var(--dim);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 6px;
+}
+
+.comp-pct {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.comp-bar {
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  height: 3px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.comp-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1.2s cubic-bezier(.4,0,.2,1) .2s;
+}
+
+.fill-green  { background: var(--green); }
+.fill-amber  { background: var(--amber); }
+.fill-dim    { background: var(--dim); }
+.fill-red    { background: var(--red); }
+.fill-gold   { background: var(--gold); }
+
+/* ── Flow arrows between layers ── */
+.flow-arrows {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 10px;
+  color: rgba(255,255,255,0.15);
+}
+
+.flow-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.flow-label {
+  background: rgba(10,18,30,0.9);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: .05em;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Detail panel ── */
+.detail-panel {
+  background: rgba(10,18,30,0.6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: all .3s;
+}
+
+.detail-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15,28,50,0.5);
+}
+
+.detail-icon { font-size: 22px; }
+
+.detail-title { font-size: 14px; font-weight: 700; color: var(--white); }
+.detail-sub   { font-size: 10px; color: var(--dim); margin-top: 1px; }
+
+.detail-status-badge {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.detail-status-badge.done    { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+.detail-status-badge.wip     { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: var(--amber); }
+.detail-status-badge.planned { background: rgba(136,153,170,0.12); border: 1px solid rgba(136,153,170,0.3); color: var(--dim); }
+
+.detail-body { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.detail-section h4 {
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+}
+
+.detail-item:last-child { border-bottom: none; }
+
+.check-icon { font-size: 10px; flex-shrink: 0; }
+
+/* ── Status summary grid ── */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.stat-card {
+  background: rgba(10,18,30,0.6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.stat-num {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label { font-size: 10px; color: var(--dim); letter-spacing: .05em; }
+
+.stat-card.green  { border-color: rgba(34,197,94,0.2); }
+.stat-card.amber  { border-color: rgba(245,158,11,0.2); }
+.stat-card.grey   { border-color: var(--border); }
+.stat-card.gold   { border-color: rgba(201,168,76,0.3); }
+
+/* ── Milestone table ── */
+.milestones {
+  background: rgba(10,18,30,0.6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.milestone-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 100px 90px;
+  padding: 10px 18px;
+  background: rgba(15,28,50,0.8);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.milestone-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 100px 90px;
+  padding: 11px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  align-items: center;
+  transition: background .15s;
+}
+
+.milestone-row:hover { background: rgba(255,255,255,0.02); }
+.milestone-row:last-child { border-bottom: none; }
+
+.milestone-name { font-size: 12px; color: var(--white); font-weight: 500; }
+.milestone-phase { font-size: 10px; color: var(--dim); font-family: 'JetBrains Mono', monospace; }
+.milestone-date  { font-size: 10px; color: var(--dim); }
+
+.ms-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+.ms-badge.done    { background: rgba(34,197,94,0.12); color: var(--green); }
+.ms-badge.wip     { background: rgba(245,158,11,0.12); color: var(--amber); }
+.ms-badge.planned { background: rgba(136,153,170,0.1); color: var(--dim); }
+.ms-badge.blocked { background: rgba(239,68,68,0.12); color: var(--red); }
+
+/* ── Data flow SVG ── */
+.data-flow-wrap {
+  background: rgba(10,18,30,0.6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+svg.dataflow { width: 100%; height: 220px; }
+
+.flow-node {
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.flow-node:hover rect { opacity: 0.9; }
+
+/* ── Legend ── */
+.legend {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px 18px;
+  background: rgba(8,14,26,0.5);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.legend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Animated connection line */
+@keyframes dash-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+.animated-line {
+  stroke-dasharray: 6 4;
+  animation: dash-flow 1.5s linear infinite;
+}
+
+/* ── Tooltip ── */
+.tooltip {
+  position: fixed;
+  background: rgba(10,20,40,0.97);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--white);
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity .15s;
+  max-width: 220px;
+}
+
+.tooltip.visible { opacity: 1; }
+.tooltip strong { color: var(--gold); display: block; margin-bottom: 4px; }
+.tooltip p { color: var(--dim); line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-logo">T</div>
+      <div>
+        <div class="topbar-name">TravelBook Hotels</div>
+        <div class="topbar-sub">NFC Glass Key System</div>
+      </div>
+    </div>
+    <div class="topbar-sep"></div>
+    <span class="topbar-tag">Concept Phase</span>
+    <span class="topbar-date">March 2026</span>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="overall-progress">
+      <div class="overall-label">Overall Completeness</div>
+      <div class="overall-num">68<span>%</span></div>
+      <div class="prog-bar-wrap"><div class="prog-bar-fill" id="overall-bar" style="width:0%"></div></div>
+      <div class="prog-sub">17 of 25 components defined</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Layers</div>
+      <a class="nav-item active" href="#arch" onclick="setActive(this)">
+        <span class="nav-icon">🗺️</span> Architecture
+      </a>
+      <a class="nav-item" href="#flow" onclick="setActive(this)">
+        <span class="nav-icon">⚡</span> Data Flow
+      </a>
+      <a class="nav-item" href="#milestones" onclick="setActive(this)">
+        <span class="nav-icon">📋</span> Milestones
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Components</div>
+      <a class="nav-item" href="#layer-card">
+        <span class="nav-icon">🪟</span> Glass Card <span class="nav-badge">95%</span>
+      </a>
+      <a class="nav-item" href="#layer-kms">
+        <span class="nav-icon">🔑</span> Key Mgmt <span class="nav-badge amber">60%</span>
+      </a>
+      <a class="nav-item" href="#layer-wallet">
+        <span class="nav-icon">📱</span> Wallet Pass <span class="nav-badge">85%</span>
+      </a>
+      <a class="nav-item" href="#layer-loyalty">
+        <span class="nav-icon">◆</span> Loyalty <span class="nav-badge amber">70%</span>
+      </a>
+      <a class="nav-item" href="#layer-door">
+        <span class="nav-icon">🚪</span> Door System <span class="nav-badge amber">40%</span>
+      </a>
+      <a class="nav-item" href="#layer-pms">
+        <span class="nav-icon">🏨</span> PMS Bridge <span class="nav-badge amber">55%</span>
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Status</div>
+      <div class="legend" style="flex-direction:column; gap:8px; align-items:flex-start; background:none; border:none; padding:8px;">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Spec complete</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--amber); animation:pulse-amber 2s infinite"></div> In progress</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--dim)"></div> Planned</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Blocked</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- Status summary -->
+    <div class="status-grid">
+      <div class="stat-card green">
+        <div class="stat-num" style="color:var(--green)">8</div>
+        <div class="stat-label">Spec Complete</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-num" style="color:var(--amber)">9</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+      <div class="stat-card grey">
+        <div class="stat-num" style="color:var(--dim)">7</div>
+        <div class="stat-label">Planned</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-num" style="color:var(--gold)">68%</div>
+        <div class="stat-label">Overall Complete</div>
+      </div>
+    </div>
+
+    <!-- Architecture diagram -->
+    <div id="arch">
+      <div class="section-hdr">
+        <h2>System Architecture</h2>
+        <p>Click any component to inspect — 6 layers, 24 components</p>
+      </div>
+
+      <div class="arch-diagram">
+        <div class="layers">
+
+          <!-- LAYER 1: Guest-facing -->
+          <div class="layer-row" id="layer-card" style="border-top:3px solid rgba(201,168,76,0.3)">
+            <div class="layer-label">
+              <span class="layer-icon">👤</span>
+              <span class="layer-name" style="color:var(--gold)">Guest Layer</span>
+              <span class="layer-desc">Physical & digital credentials</span>
+            </div>
+            <div class="component-row">
+              <div class="comp-card" onclick="showDetail('glass-card')">
+                <div class="comp-top"><span class="comp-icon">🪟</span><span class="status-dot done"></span></div>
+                <div class="comp-name">Glass NFC Card</div>
+                <div class="comp-tag">MIFARE DESFire EV3</div>
+                <div class="comp-pct">95%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-green" style="width:95%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('apple-wallet')">
+                <div class="comp-top"><span class="comp-icon">🍎</span><span class="status-dot done"></span></div>
+                <div class="comp-name">Apple Wallet Pass</div>
+                <div class="comp-tag">PassKit SDK</div>
+                <div class="comp-pct">85%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-green" style="width:85%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('google-wallet')">
+                <div class="comp-top"><span class="comp-icon">🤖</span><span class="status-dot wip"></span></div>
+                <div class="comp-name">Google Wallet</div>
+                <div class="comp-tag">Google Pay API</div>
+                <div class="comp-pct">60%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-amber" style="width:60%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('mobile-app')">
+                <div class="comp-top"><span class="comp-icon">📱</span><span class="status-dot wip"></span></div>
+                <div class="comp-name">TravelBook App</div>
+                <div class="comp-tag">React Native</div>
+                <div class="comp-pct">70%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-amber" style="width:70%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Flow indicator -->
+          <div class="flow-line" style="padding:4px 140px; gap:6px; display:flex; align-items:center;">
+            <span class="flow-label">NFC 13.56 MHz</span>
+            <span class="flow-label">APNs / FCM</span>
+            <span class="flow-label">REST API</span>
+          </div>
+
+          <!-- LAYER 2: Access control -->
+          <div class="layer-row" id="layer-door" style="border-top:1px solid rgba(59,130,246,0.2)">
+            <div class="layer-label">
+              <span class="layer-icon">🚪</span>
+              <span class="layer-name" style="color:var(--blue)">Access Layer</span>
+              <span class="layer-desc">Door readers & property network</span>
+            </div>
+            <div class="component-row">
+              <div class="comp-card" onclick="showDetail('door-reader')">
+                <div class="comp-top"><span class="comp-icon">📡</span><span class="status-dot wip"></span></div>
+                <div class="comp-name">NFC Door Reader</div>
+                <div class="comp-tag">ISO 14443 + OSDP v2</div>
+                <div class="comp-pct">40%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-amber" style="width:40%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('osdp-gateway')">
+                <div class="comp-top"><span class="comp-icon">🔌</span><span class="status-dot wip"></span></div>
+                <div class="comp-name">OSDP Gateway</div>
+                <div class="comp-tag">OSDP v2 / Wiegand</div>
+                <div class="comp-pct">35%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-amber" style="width:35%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('card-writer')">
+                <div class="comp-top"><span class="comp-icon">✍️</span><span class="status-dot done"></span></div>
+                <div class="comp-name">Card Writer Terminal</div>
+                <div class="comp-tag">DESFire Write API</div>
+                <div class="comp-pct">90%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-green" style="width:90%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('access-audit')">
+                <div class="comp-top"><span class="comp-icon">📋</span><span class="status-dot planned"></span></div>
+                <div class="comp-name">Access Audit Log</div>
+                <div class="comp-tag">Event stream / TS DB</div>
+                <div class="comp-pct">20%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-dim" style="width:20%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Flow indicator -->
+          <div class="flow-line" style="padding:4px 140px; gap:6px; display:flex; align-items:center;">
+            <span class="flow-label">Challenge-Response (AES)</span>
+            <span class="flow-label">WebSocket</span>
+          </div>
+
+          <!-- LAYER 3: Key management -->
+          <div class="layer-row" id="layer-kms" style="border-top:1px solid rgba(139,92,246,0.2)">
+            <div class="layer-label">
+              <span class="layer-icon">🔑</span>
+              <span class="layer-name" style="color:var(--purple)">Security Layer</span>
+              <span class="layer-desc">Key lifecycle & HSM</span>
+            </div>
+            <div class="component-row">
+              <div class="comp-card" onclick="showDetail('kms')">
+                <div class="comp-top"><span class="comp-icon">🔒</span><span class="status-dot wip"></span></div>
+                <div class="comp-name">Key Mgmt Service</div>
+                <div class="comp-tag">HSM-backed</div>
+                <div class="comp-pct">60%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-amber" style="width:60%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('hsm')">
+                <div class="comp-top"><span class="comp-icon">🛡️</span><span class="status-dot planned"></span></div>
+                <div class="comp-name">HSM Module</div>
+                <div class="comp-tag">FIPS 140-2 Level 3</div>
+                <div class="comp-pct">25%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-dim" style="width:25%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('revocation')">
+                <div class="comp-top"><span class="comp-icon">⛔</span><span class="status-dot done"></span></div>
+                <div class="comp-name">Revocation Engine</div>
+                <div class="comp-tag">&lt;500ms broadcast</div>
+                <div class="comp-pct">80%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-green" style="width:80%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('token-engine')">
+                <div class="comp-top"><span class="comp-icon">🎫</span><span class="status-dot done"></span></div>
+                <div class="comp-name">Token Engine</div>
+                <div class="comp-tag">One-time CMAC</div>
+                <div class="comp-pct">90%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-green" style="width:90%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Flow indicator -->
+          <div class="flow-line" style="padding:4px 140px; gap:6px; display:flex; align-items:center;">
+            <span class="flow-label">OAuth 2.0 / JWT</span>
+            <span class="flow-label">gRPC internal</span>
+          </div>
+
+          <!-- LAYER 4: Account & Loyalty -->
+          <div class="layer-row" id="layer-loyalty" style="border-top:1px solid rgba(201,168,76,0.2)">
+            <div class="layer-label">
+              <span class="layer-icon">◆</span>
+              <span class="layer-name" style="color:var(--gold)">Account Layer</span>
+              <span class="layer-desc">Identity, loyalty, bookings</span>
+            </div>
+            <div class="component-row">
+              <div class="comp-card" onclick="showDetail('account-svc')">
+                <div class="comp-top"><span class="comp-icon">👤</span><span class="status-dot done"></span></div>
+                <div class="comp-name">Account Service</div>
+                <div class="comp-tag">JWT / OAuth 2.0</div>
+                <div class="comp-pct">85%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-green" style="width:85%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('loyalty-engine')">
+                <div class="comp-top"><span class="comp-icon">📈</span><span class="status-dot wip"></span></div>
+                <div class="comp-name">Loyalty Engine</div>
+                <div class="comp-tag">Real-time points</div>
+                <div class="comp-pct">70%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-amber" style="width:70%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('booking-svc')">
+                <div class="comp-top"><span class="comp-icon">📅</span><span class="status-dot done"></span></div>
+                <div class="comp-name">Booking Service</div>
+                <div class="comp-tag">Reservation mgmt</div>
+                <div class="comp-pct">90%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-green" style="width:90%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('pass-svc')">
+                <div class="comp-top"><span class="comp-icon">🎟️</span><span class="status-dot wip"></span></div>
+                <div class="comp-name">Pass Service</div>
+                <div class="comp-tag">pkpass builder</div>
+                <div class="comp-pct">75%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-amber" style="width:75%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Flow indicator -->
+          <div class="flow-line" style="padding:4px 140px; gap:6px; display:flex; align-items:center;">
+            <span class="flow-label">REST webhooks</span>
+            <span class="flow-label">Event bus (Kafka)</span>
+          </div>
+
+          <!-- LAYER 5: PMS / External -->
+          <div class="layer-row" id="layer-pms" style="border-top:1px solid rgba(20,184,166,0.2)">
+            <div class="layer-label">
+              <span class="layer-icon">🏨</span>
+              <span class="layer-name" style="color:var(--teal)">Integration Layer</span>
+              <span class="layer-desc">PMS, partners & notifications</span>
+            </div>
+            <div class="component-row">
+              <div class="comp-card" onclick="showDetail('pms-bridge')">
+                <div class="comp-top"><span class="comp-icon">🔗</span><span class="status-dot wip"></span></div>
+                <div class="comp-name">PMS Bridge</div>
+                <div class="comp-tag">Opera / Mews / Fidelio</div>
+                <div class="comp-pct">55%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-amber" style="width:55%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('apns')">
+                <div class="comp-top"><span class="comp-icon">🔔</span><span class="status-dot done"></span></div>
+                <div class="comp-name">APNs / FCM</div>
+                <div class="comp-tag">Push notifications</div>
+                <div class="comp-pct">95%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-green" style="width:95%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('partner-api')">
+                <div class="comp-top"><span class="comp-icon">🌐</span><span class="status-dot planned"></span></div>
+                <div class="comp-name">Partner API</div>
+                <div class="comp-tag">Flights, car hire</div>
+                <div class="comp-pct">15%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-dim" style="width:15%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('pos-integration')">
+                <div class="comp-top"><span class="comp-icon">💳</span><span class="status-dot planned"></span></div>
+                <div class="comp-name">POS Integration</div>
+                <div class="comp-tag">F&B points earn</div>
+                <div class="comp-pct">20%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-dim" style="width:20%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LAYER 6: Infrastructure -->
+          <div class="layer-row" style="border-top:1px solid rgba(100,200,240,0.15)">
+            <div class="layer-label">
+              <span class="layer-icon">☁️</span>
+              <span class="layer-name" style="color:var(--diamond, #64C8F0)">Infra Layer</span>
+              <span class="layer-desc">Cloud, DB, monitoring</span>
+            </div>
+            <div class="component-row">
+              <div class="comp-card" onclick="showDetail('cloud-infra')">
+                <div class="comp-top"><span class="comp-icon">☁️</span><span class="status-dot planned"></span></div>
+                <div class="comp-name">Cloud Infra</div>
+                <div class="comp-tag">AWS / multi-region</div>
+                <div class="comp-pct">30%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-dim" style="width:30%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('time-series-db')">
+                <div class="comp-top"><span class="comp-icon">🗄️</span><span class="status-dot planned"></span></div>
+                <div class="comp-name">TimeSeries DB</div>
+                <div class="comp-tag">Access event log</div>
+                <div class="comp-pct">10%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-dim" style="width:10%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('event-bus')">
+                <div class="comp-top"><span class="comp-icon">📨</span><span class="status-dot planned"></span></div>
+                <div class="comp-name">Event Bus</div>
+                <div class="comp-tag">Kafka / SQS</div>
+                <div class="comp-pct">10%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-dim" style="width:10%"></div></div>
+              </div>
+              <div class="comp-card" onclick="showDetail('monitoring')">
+                <div class="comp-top"><span class="comp-icon">📊</span><span class="status-dot planned"></span></div>
+                <div class="comp-name">Monitoring</div>
+                <div class="comp-tag">Datadog / CloudWatch</div>
+                <div class="comp-pct">0%</div>
+                <div class="comp-bar"><div class="comp-bar-fill fill-dim" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail panel (shown on click) -->
+    <div class="detail-panel" id="detail-panel" style="display:none">
+      <div class="detail-header">
+        <span class="detail-icon" id="detail-icon">🪟</span>
+        <div>
+          <div class="detail-title" id="detail-title">Glass NFC Card</div>
+          <div class="detail-sub" id="detail-sub">MIFARE DESFire EV3 · ISO/IEC 14443 Type A</div>
+        </div>
+        <div class="detail-status-badge done" id="detail-badge">✓ Spec Complete</div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-section">
+          <h4>Completed</h4>
+          <div id="detail-done-list"></div>
+        </div>
+        <div class="detail-section">
+          <h4>Remaining / Gaps</h4>
+          <div id="detail-gaps-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data flow -->
+    <div id="flow">
+      <div class="section-hdr">
+        <h2>Data Flow</h2>
+        <p>End-to-end key lifecycle from booking to door unlock</p>
+      </div>
+      <div class="data-flow-wrap">
+        <svg class="dataflow" viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="rgba(201,168,76,0.6)"/>
+            </marker>
+            <marker id="arrow-dim" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="rgba(136,153,170,0.5)"/>
+            </marker>
+          </defs>
+
+          <!-- Nodes -->
+          <!-- Guest App -->
+          <g class="flow-node">
+            <rect x="10" y="70" width="110" height="60" rx="8" fill="rgba(15,42,82,0.8)" stroke="rgba(201,168,76,0.4)" stroke-width="1.5"/>
+            <text x="65" y="93" text-anchor="middle" fill="#C9A84C" font-size="18">📱</text>
+            <text x="65" y="112" text-anchor="middle" fill="#FFFFFF" font-size="10" font-family="Inter">TravelBook</text>
+            <text x="65" y="124" text-anchor="middle" fill="#8899AA" font-size="9" font-family="Inter">App / Web</text>
+          </g>
+
+          <!-- Booking Svc -->
+          <g class="flow-node">
+            <rect x="165" y="10" width="110" height="55" rx="8" fill="rgba(15,42,82,0.7)" stroke="rgba(34,197,94,0.4)" stroke-width="1.5"/>
+            <text x="220" y="35" text-anchor="middle" fill="#22C55E" font-size="16">📅</text>
+            <text x="220" y="50" text-anchor="middle" fill="#FFFFFF" font-size="10" font-family="Inter">Booking Svc</text>
+            <text x="220" y="60" text-anchor="middle" fill="#8899AA" font-size="8" font-family="Inter">90% complete</text>
+          </g>
+
+          <!-- Account Svc -->
+          <g class="flow-node">
+            <rect x="165" y="135" width="110" height="55" rx="8" fill="rgba(15,42,82,0.7)" stroke="rgba(34,197,94,0.4)" stroke-width="1.5"/>
+            <text x="220" y="160" text-anchor="middle" fill="#22C55E" font-size="16">👤</text>
+            <text x="220" y="175" text-anchor="middle" fill="#FFFFFF" font-size="10" font-family="Inter">Account Svc</text>
+            <text x="220" y="184" text-anchor="middle" fill="#8899AA" font-size="8" font-family="Inter">85% complete</text>
+          </g>
+
+          <!-- KMS -->
+          <g class="flow-node">
+            <rect x="345" y="70" width="110" height="60" rx="8" fill="rgba(60,20,100,0.5)" stroke="rgba(139,92,246,0.5)" stroke-width="1.5"/>
+            <text x="400" y="93" text-anchor="middle" fill="#8B5CF6" font-size="18">🔑</text>
+            <text x="400" y="112" text-anchor="middle" fill="#FFFFFF" font-size="10" font-family="Inter">Key Mgmt</text>
+            <text x="400" y="124" text-anchor="middle" fill="#8899AA" font-size="9" font-family="Inter">60% complete</text>
+          </g>
+
+          <!-- Pass Service -->
+          <g class="flow-node">
+            <rect x="510" y="10" width="110" height="55" rx="8" fill="rgba(15,42,82,0.7)" stroke="rgba(245,158,11,0.4)" stroke-width="1.5"/>
+            <text x="565" y="35" text-anchor="middle" fill="#F59E0B" font-size="16">🎟️</text>
+            <text x="565" y="50" text-anchor="middle" fill="#FFFFFF" font-size="10" font-family="Inter">Pass Service</text>
+            <text x="565" y="60" text-anchor="middle" fill="#8899AA" font-size="8" font-family="Inter">75% complete</text>
+          </g>
+
+          <!-- OSDP Gateway -->
+          <g class="flow-node">
+            <rect x="510" y="135" width="110" height="55" rx="8" fill="rgba(15,42,82,0.7)" stroke="rgba(245,158,11,0.4)" stroke-width="1.5"/>
+            <text x="565" y="160" text-anchor="middle" fill="#F59E0B" font-size="16">🔌</text>
+            <text x="565" y="175" text-anchor="middle" fill="#FFFFFF" font-size="10" font-family="Inter">OSDP Gateway</text>
+            <text x="565" y="184" text-anchor="middle" fill="#8899AA" font-size="8" font-family="Inter">35% complete</text>
+          </g>
+
+          <!-- Door Reader -->
+          <g class="flow-node">
+            <rect x="680" y="10" width="110" height="55" rx="8" fill="rgba(15,42,82,0.7)" stroke="rgba(245,158,11,0.4)" stroke-width="1.5"/>
+            <text x="735" y="35" text-anchor="middle" fill="#F59E0B" font-size="16">📡</text>
+            <text x="735" y="50" text-anchor="middle" fill="#FFFFFF" font-size="10" font-family="Inter">Door Reader</text>
+            <text x="735" y="60" text-anchor="middle" fill="#8899AA" font-size="8" font-family="Inter">40% complete</text>
+          </g>
+
+          <!-- Glass Card -->
+          <g class="flow-node">
+            <rect x="680" y="135" width="110" height="55" rx="8" fill="rgba(15,42,82,0.7)" stroke="rgba(201,168,76,0.5)" stroke-width="1.5"/>
+            <text x="735" y="160" text-anchor="middle" fill="#C9A84C" font-size="16">🪟</text>
+            <text x="735" y="175" text-anchor="middle" fill="#FFFFFF" font-size="10" font-family="Inter">Glass Card</text>
+            <text x="735" y="184" text-anchor="middle" fill="#8899AA" font-size="8" font-family="Inter">95% complete</text>
+          </g>
+
+          <!-- Arrows -->
+          <!-- App → Booking -->
+          <line x1="120" y1="90" x2="162" y2="50" stroke="rgba(34,197,94,0.5)" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <!-- App → Account -->
+          <line x1="120" y1="115" x2="162" y2="155" stroke="rgba(34,197,94,0.5)" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <!-- Booking → KMS -->
+          <line x1="275" y1="37" x2="342" y2="87" stroke="rgba(139,92,246,0.5)" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowhead)"/>
+          <!-- Account → KMS -->
+          <line x1="275" y1="160" x2="342" y2="125" stroke="rgba(139,92,246,0.5)" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowhead)"/>
+          <!-- KMS → Pass Svc -->
+          <line x1="455" y1="87" x2="508" y2="48" stroke="rgba(245,158,11,0.5)" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowhead)" class="animated-line"/>
+          <!-- KMS → OSDP -->
+          <line x1="455" y1="122" x2="508" y2="158" stroke="rgba(245,158,11,0.5)" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowhead)" class="animated-line"/>
+          <!-- Pass Svc → Door Reader -->
+          <line x1="620" y1="37" x2="677" y2="37" stroke="rgba(201,168,76,0.5)" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <!-- OSDP → Glass Card -->
+          <line x1="620" y1="162" x2="677" y2="162" stroke="rgba(201,168,76,0.5)" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <!-- Door Reader ↔ Glass Card -->
+          <line x1="735" y1="65" x2="735" y2="132" stroke="rgba(201,168,76,0.7)" stroke-width="2" stroke-dasharray="3,2" marker-end="url(#arrowhead)" class="animated-line"/>
+
+          <!-- Labels on arrows -->
+          <text x="138" y="62" fill="#8899AA" font-size="8" font-family="JetBrains Mono">book</text>
+          <text x="300" y="72" fill="#8899AA" font-size="8" font-family="JetBrains Mono">key req</text>
+          <text x="300" y="130" fill="#8899AA" font-size="8" font-family="JetBrains Mono">key req</text>
+          <text x="466" y="62" fill="#8899AA" font-size="8" font-family="JetBrains Mono">pkpass</text>
+          <text x="466" y="148" fill="#8899AA" font-size="8" font-family="JetBrains Mono">key write</text>
+          <text x="635" y="30" fill="#8899AA" font-size="8" font-family="JetBrains Mono">APNs</text>
+          <text x="635" y="176" fill="#8899AA" font-size="8" font-family="JetBrains Mono">NFC write</text>
+          <text x="748" y="100" fill="#C9A84C" font-size="8" font-family="JetBrains Mono">NFC tap</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Milestones -->
+    <div id="milestones">
+      <div class="section-hdr">
+        <h2>Delivery Milestones</h2>
+        <p>Phase-by-phase completeness tracker</p>
+      </div>
+      <div class="milestones">
+        <div class="milestone-header">
+          <span>Milestone</span>
+          <span>Phase</span>
+          <span>Target</span>
+          <span>Status</span>
+        </div>
+
+        <div class="milestone-row">
+          <div><div class="milestone-name">Physical card spec finalised</div><div class="milestone-phase">glass · nfc · dimensions</div></div>
+          <div class="milestone-phase">Phase 1</div>
+          <div class="milestone-date">Mar 2026</div>
+          <span class="ms-badge done">✓ Done</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">Apple Wallet pass design & spec</div><div class="milestone-phase">passkit · pass.json · apns</div></div>
+          <div class="milestone-phase">Phase 1</div>
+          <div class="milestone-date">Mar 2026</div>
+          <span class="ms-badge done">✓ Done</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">NFC encryption model defined</div><div class="milestone-phase">aes-128 · cmac · token scheme</div></div>
+          <div class="milestone-phase">Phase 1</div>
+          <div class="milestone-date">Mar 2026</div>
+          <span class="ms-badge done">✓ Done</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">Loyalty tier structure defined</div><div class="milestone-phase">silver · gold · platinum · diamond</div></div>
+          <div class="milestone-phase">Phase 1</div>
+          <div class="milestone-date">Mar 2026</div>
+          <span class="ms-badge done">✓ Done</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">KMS API design</div><div class="milestone-phase">key provisioning · revocation · hsm</div></div>
+          <div class="milestone-phase">Phase 2</div>
+          <div class="milestone-date">Apr 2026</div>
+          <span class="ms-badge wip">⟳ In Progress</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">Booking service integration</div><div class="milestone-phase">pms webhooks · reservation model</div></div>
+          <div class="milestone-phase">Phase 2</div>
+          <div class="milestone-date">Apr 2026</div>
+          <span class="ms-badge wip">⟳ In Progress</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">OSDP gateway implementation</div><div class="milestone-phase">door readers · property network</div></div>
+          <div class="milestone-phase">Phase 2</div>
+          <div class="milestone-date">May 2026</div>
+          <span class="ms-badge wip">⟳ In Progress</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">Apple PassKit certificate</div><div class="milestone-phase">apple dev portal · team cert</div></div>
+          <div class="milestone-phase">Phase 2</div>
+          <div class="milestone-date">Apr 2026</div>
+          <span class="ms-badge wip">⟳ In Progress</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">Google Wallet integration</div><div class="milestone-phase">google pay api · android pass</div></div>
+          <div class="milestone-phase">Phase 3</div>
+          <div class="milestone-date">May 2026</div>
+          <span class="ms-badge planned">◦ Planned</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">PMS bridge (Opera / Mews)</div><div class="milestone-phase">property system connectors</div></div>
+          <div class="milestone-phase">Phase 3</div>
+          <div class="milestone-date">May 2026</div>
+          <span class="ms-badge planned">◦ Planned</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">Pilot property launch</div><div class="milestone-phase">1 property · gold+ members · soft go-live</div></div>
+          <div class="milestone-phase">Phase 3</div>
+          <div class="milestone-date">Jun 2026</div>
+          <span class="ms-badge planned">◦ Planned</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">POS loyalty earn integration</div><div class="milestone-phase">f&b · spa · points on spend</div></div>
+          <div class="milestone-phase">Phase 4</div>
+          <div class="milestone-date">Jul 2026</div>
+          <span class="ms-badge planned">◦ Planned</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">Cloud infra & multi-region setup</div><div class="milestone-phase">aws · failover · monitoring</div></div>
+          <div class="milestone-phase">Phase 4</div>
+          <div class="milestone-date">Jul 2026</div>
+          <span class="ms-badge planned">◦ Planned</span>
+        </div>
+        <div class="milestone-row">
+          <div><div class="milestone-name">Full property rollout</div><div class="milestone-phase">all properties · all tiers · marketing</div></div>
+          <div class="milestone-phase">Phase 5</div>
+          <div class="milestone-date">Sep 2026</div>
+          <span class="ms-badge planned">◦ Planned</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:24px"></div>
+  </main>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ── Animate progress bars on load ──────────────────────────────────────────
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('overall-bar').style.width = '68%';
+    document.querySelectorAll('.comp-bar-fill').forEach(el => {
+      // widths already set in HTML, trigger reflow animation
+      const w = el.style.width;
+      el.style.width = '0%';
+      requestAnimationFrame(() => {
+        setTimeout(() => { el.style.width = w; }, 50);
+      });
+    });
+    document.querySelector('.prog-bar-fill').style.width = '68%';
+  }, 200);
+});
+
+// ── Nav active state ────────────────────────────────────────────────────────
+function setActive(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── Component detail data ───────────────────────────────────────────────────
+const details = {
+  'glass-card': {
+    icon: '🪟', title: 'Glass NFC Card', sub: 'MIFARE DESFire EV3 · ISO/IEC 14443 Type A · 13.56 MHz',
+    status: 'done', statusText: '✓ 95% Spec Complete',
+    done: [
+      'CR80 borosilicate glass dimensions defined (85.6×54×0.8mm)',
+      'NXP MIFARE DESFire EV3 chip selected',
+      'AES-128 + 3DES encryption scheme specified',
+      'Application Directory (ADF) structure designed',
+      'Key diversification scheme (CMAC / AN10922)',
+      'Card manufacturing supplier shortlisted',
+      'Laser engraving personalisation process defined',
+      'Transport key provisioning flow documented',
+    ],
+    gaps: [
+      'Final supplier contract not yet signed',
+      'Physical card sample not yet received',
+    ]
+  },
+  'apple-wallet': {
+    icon: '🍎', title: 'Apple Wallet Pass', sub: 'PassKit SDK · boardingPass type · Express Mode',
+    status: 'done', statusText: '✓ 85% Spec Complete',
+    done: [
+      'pass.json schema fully defined',
+      'All pass fields mapped (header, primary, secondary, auxiliary, back)',
+      'NFC Express Mode payload design complete',
+      'APNs push update triggers specified',
+      'Barcode fallback (PDF417) defined',
+      'Pass expiration logic documented',
+      'Brand design (navy/gold) applied',
+    ],
+    gaps: [
+      'Apple PassKit certificate application pending',
+      'Live APNs integration not yet tested',
+      'Pass update webhook endpoint not yet built',
+    ]
+  },
+  'google-wallet': {
+    icon: '🤖', title: 'Google Wallet', sub: 'Google Pay API · Android wallet pass',
+    status: 'wip', statusText: '⟳ 60% In Progress',
+    done: [
+      'Google Wallet API version selected',
+      'Generic pass object schema drafted',
+      'FCM push update flow designed',
+    ],
+    gaps: [
+      'Google Pay merchant account not yet registered',
+      'Pass object class not yet submitted',
+      'Android NFC Express Mode not configured',
+      'QA testing on Android devices not started',
+    ]
+  },
+  'mobile-app': {
+    icon: '📱', title: 'TravelBook App', sub: 'React Native · iOS + Android',
+    status: 'wip', statusText: '⟳ 70% In Progress',
+    done: [
+      'Booking flow UI complete',
+      'Account / loyalty dashboard designed',
+      'Card management UI wireframes done',
+      'Wallet pass "Add to Apple Wallet" button integrated',
+      'Push notification handling implemented',
+    ],
+    gaps: [
+      'NFC card status screen not yet built',
+      'Loyalty redemption UI pending',
+      'Google Wallet integration pending',
+      'Card revocation UI pending',
+    ]
+  },
+  'door-reader': {
+    icon: '📡', title: 'NFC Door Reader', sub: 'ISO 14443 Type A · OSDP v2',
+    status: 'wip', statusText: '⟳ 40% In Progress',
+    done: [
+      'Reader hardware specification defined',
+      'MIFARE DESFire EV3 support confirmed',
+      'ISO 14443 Type A compliance verified',
+    ],
+    gaps: [
+      'Supplier selection not finalised',
+      'OSDP v2 firmware not yet configured',
+      'Apple PassKit NFC module not tested',
+      'Installation spec per property not written',
+      'Offline fallback mode not designed',
+    ]
+  },
+  'osdp-gateway': {
+    icon: '🔌', title: 'OSDP Gateway', sub: 'OSDP v2 / Wiegand bridge',
+    status: 'wip', statusText: '⟳ 35% In Progress',
+    done: [
+      'OSDP v2 protocol version selected',
+      'Gateway hardware form factor defined',
+    ],
+    gaps: [
+      'Gateway firmware development not started',
+      'Wiegand legacy bridge not yet designed',
+      'KMS WebSocket integration not built',
+      'Multi-property routing not designed',
+      'Failover / offline mode not specified',
+    ]
+  },
+  'card-writer': {
+    icon: '✍️', title: 'Card Writer Terminal', sub: 'DESFire Write API · Front desk',
+    status: 'done', statusText: '✓ 90% Spec Complete',
+    done: [
+      'Terminal hardware (ACR1252U equivalent) selected',
+      'DESFire application write sequence documented',
+      'Key handle injection process designed',
+      'Guest personalisation data write spec complete',
+      'PMS integration for check-in trigger defined',
+      'Staff UI wireframe complete',
+    ],
+    gaps: [
+      'Terminal firmware / SDK integration not yet built',
+    ]
+  },
+  'kms': {
+    icon: '🔒', title: 'Key Management Service', sub: 'HSM-backed · AES-128 lifecycle',
+    status: 'wip', statusText: '⟳ 60% In Progress',
+    done: [
+      'KMS API endpoints specified (provision, rotate, revoke)',
+      'Key diversification algorithm (CMAC) documented',
+      'JWT + OAuth 2.0 auth model defined',
+      'Key validity window model designed',
+    ],
+    gaps: [
+      'HSM provider not yet selected',
+      'KMS service implementation not started',
+      'OSDP gateway key sync not built',
+      'Multi-property key namespace not designed',
+    ]
+  },
+  'hsm': {
+    icon: '🛡️', title: 'HSM Module', sub: 'FIPS 140-2 Level 3 hardware',
+    status: 'planned', statusText: '◦ 25% Planned',
+    done: [
+      'FIPS 140-2 Level 3 compliance requirement set',
+    ],
+    gaps: [
+      'HSM vendor evaluation not started',
+      'Master key ceremony not planned',
+      'Cloud HSM vs on-prem decision pending',
+      'Key backup and recovery procedure not written',
+    ]
+  },
+  'revocation': {
+    icon: '⛔', title: 'Revocation Engine', sub: '<500ms key broadcast · WebSocket',
+    status: 'done', statusText: '✓ 80% Spec Complete',
+    done: [
+      'Revocation trigger events enumerated',
+      'WebSocket broadcast protocol designed',
+      '<500ms SLA defined',
+      'Door reader local cache invalidation model designed',
+      'Guest-facing revocation + re-issue flow documented',
+    ],
+    gaps: [
+      'Load testing under high revocation volume not done',
+      'Offline reader revocation handling not fully specified',
+    ]
+  },
+  'token-engine': {
+    icon: '🎫', title: 'One-Time Token Engine', sub: 'CMAC · monotonic counter · replay prevention',
+    status: 'done', statusText: '✓ 90% Spec Complete',
+    done: [
+      'CMAC-based one-time token scheme documented',
+      'Monotonic counter design (replay prevention) complete',
+      'Session key derivation (per-tap) specified',
+      'Token validation flow at door reader defined',
+      'Counter synchronisation on lost card handled',
+    ],
+    gaps: [
+      'Implementation not yet started',
+    ]
+  },
+  'account-svc': {
+    icon: '👤', title: 'Account Service', sub: 'Guest identity · bookings · JWT / OAuth 2.0',
+    status: 'done', statusText: '✓ 85% Spec Complete',
+    done: [
+      'JWT + OAuth 2.0 auth model defined',
+      'Guest identity schema complete',
+      'Card-to-account binding model documented',
+      'GDPR data minimisation principles applied',
+      'Account UUID as primary identifier',
+    ],
+    gaps: [
+      'Multi-property guest profile merging not designed',
+      'GDPR deletion flow not yet fully specified',
+    ]
+  },
+  'loyalty-engine': {
+    icon: '📈', title: 'Loyalty Engine', sub: 'Real-time points · 4-tier programme',
+    status: 'wip', statusText: '⟳ 70% In Progress',
+    done: [
+      'Tier structure (Silver/Gold/Platinum/Diamond) defined',
+      'Points multiplier rules documented',
+      'Earning events enumerated (stay, F&B, referral, etc.)',
+      'Redemption scheme defined',
+      'Tier qualification thresholds set',
+    ],
+    gaps: [
+      'Loyalty microservice implementation not started',
+      'Points ledger database design not started',
+      'Tier downgrade / anniversary rules not finalised',
+    ]
+  },
+  'booking-svc': {
+    icon: '📅', title: 'Booking Service', sub: 'Reservation management · T-24h key trigger',
+    status: 'done', statusText: '✓ 90% Spec Complete',
+    done: [
+      'Booking data model defined',
+      'Key provisioning trigger (T-24h) documented',
+      'PMS webhook event contract specified',
+      'Check-in / check-out lifecycle mapped',
+      'Room assignment to key binding specified',
+    ],
+    gaps: [
+      'Multi-room booking (suites) edge case not handled',
+    ]
+  },
+  'pass-svc': {
+    icon: '🎟️', title: 'Pass Service', sub: 'pkpass builder · APNs delivery',
+    status: 'wip', statusText: '⟳ 75% In Progress',
+    done: [
+      'pkpass bundle structure fully specified',
+      'Signing certificate requirements documented',
+      'APNs push notification triggers defined',
+      'Pass update event types enumerated',
+      'Barcode fallback (PDF417) specified',
+    ],
+    gaps: [
+      'Service implementation not yet started',
+      'Pass signing infrastructure not built',
+      'Google Wallet pass builder not designed',
+    ]
+  },
+  'pms-bridge': {
+    icon: '🔗', title: 'PMS Bridge', sub: 'Opera / Mews / Fidelio integration',
+    status: 'wip', statusText: '⟳ 55% In Progress',
+    done: [
+      'PMS event types for integration identified',
+      'Webhook contract spec drafted',
+      'Opera Cloud API compatibility checked',
+    ],
+    gaps: [
+      'Connector implementation not started',
+      'Mews / Fidelio adapter not designed',
+      'Error handling and retry logic not specified',
+      'Staging PMS environment not set up',
+    ]
+  },
+  'apns': {
+    icon: '🔔', title: 'APNs / FCM', sub: 'Push notification delivery',
+    status: 'done', statusText: '✓ 95% Spec Complete',
+    done: [
+      'APNs HTTP/2 provider API selected',
+      'FCM v1 API for Android selected',
+      'Notification payload schemas defined',
+      'Topic-based targeting designed',
+      'Wallet pass update push flow documented',
+      'Error handling (invalid device tokens) specified',
+    ],
+    gaps: [
+      'Production APNs certificate not yet obtained',
+    ]
+  },
+};
+
+// ── Show detail panel ───────────────────────────────────────────────────────
+function showDetail(id) {
+  const d = details[id];
+  if (!d) return;
+
+  document.getElementById('detail-panel').style.display = 'block';
+
+  document.getElementById('detail-icon').textContent = d.icon;
+  document.getElementById('detail-title').textContent = d.title;
+  document.getElementById('detail-sub').textContent = d.sub;
+
+  const badge = document.getElementById('detail-badge');
+  badge.className = `detail-status-badge ${d.status}`;
+  badge.textContent = d.statusText;
+
+  const doneList = document.getElementById('detail-done-list');
+  doneList.innerHTML = '';
+  d.done.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'detail-item';
+    el.innerHTML = `<span class="check-icon" style="color:var(--green)">✓</span>${item}`;
+    doneList.appendChild(el);
+  });
+
+  const gapList = document.getElementById('detail-gaps-list');
+  gapList.innerHTML = '';
+  d.gaps.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'detail-item';
+    el.innerHTML = `<span class="check-icon" style="color:var(--amber)">○</span>${item}`;
+    gapList.appendChild(el);
+  });
+
+  // Highlight selected card
+  document.querySelectorAll('.comp-card').forEach(c => c.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+
+  // Scroll to detail panel
+  document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+</body>
+</html>

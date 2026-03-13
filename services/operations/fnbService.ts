@@ -1,6 +1,7 @@
 import { fetchItem, fetchItems, updateItem, addItem } from '../kernel/firestoreService';
 import { MasterInventoryItem, PosOrder, Folio, Reservation, FolioCharge, RecipeDraft } from '../../types';
 import { botEngine } from '../kernel/systemBridge';
+import { pipeline } from '../intelligence/smartDataPipeline';
 
 
 /**
@@ -12,6 +13,26 @@ import { botEngine } from '../kernel/systemBridge';
 export const deductInventoryForOrder = async (order: PosOrder, recipes: RecipeDraft[]) => {
     try {
         const inventory = await fetchItems<MasterInventoryItem>('master_inventory');
+
+        const emitInventoryMovement = (invItem: MasterInventoryItem, locationId: string, locationName: string | undefined, movement: string, qty: number, resultingStock: number) => {
+            pipeline.emit({
+                type: 'inventory_movement',
+                payload: {
+                    itemId: invItem.id,
+                    itemName: invItem.name,
+                    locationId,
+                    locationName,
+                    movement,
+                    qty,
+                    totalStock: resultingStock,
+                    reorderPoint: invItem.reorderPoint,
+                    parLevel: invItem.parLevel,
+                    unit: invItem.unit
+                },
+                module: 'finance',
+                timestamp: Date.now()
+            });
+        };
 
         for (const item of order.items) {
             // 1. Try to find a Recipe
@@ -28,6 +49,7 @@ export const deductInventoryForOrder = async (order: PosOrder, recipes: RecipeDr
                             // Calculate deduction: Recipe Qty * Order Item Qty
                             const deductAmount = ingredient.qty * item.qty;
                             const newStock = Math.max(0, location.stock - deductAmount);
+                            const newTotalStock = Math.max(0, invItem.totalStock - deductAmount);
 
                             const updatedLocations = invItem.locations.map(l =>
                                 l.locationId === order.outletId ? { ...l, stock: newStock } : l
@@ -35,8 +57,10 @@ export const deductInventoryForOrder = async (order: PosOrder, recipes: RecipeDr
 
                             await updateItem('master_inventory', invItem.id, {
                                 locations: updatedLocations,
-                                totalStock: Math.max(0, invItem.totalStock - deductAmount) // Simplified total update
+                                totalStock: newTotalStock // Simplified total update
                             });
+
+                            emitInventoryMovement(invItem, order.outletId, location.locationName, 'consume', deductAmount, newTotalStock);
                         }
                     }
                 }
@@ -48,14 +72,17 @@ export const deductInventoryForOrder = async (order: PosOrder, recipes: RecipeDr
                     const location = invItem.locations.find(l => l.locationId === order.outletId);
                     if (location) {
                         const newStock = Math.max(0, location.stock - item.qty);
+                        const newTotalStock = Math.max(0, invItem.totalStock - item.qty);
                         const updatedLocations = invItem.locations.map(l =>
                             l.locationId === order.outletId ? { ...l, stock: newStock } : l
                         );
 
                         await updateItem('master_inventory', invItem.id, {
                             locations: updatedLocations,
-                            totalStock: invItem.totalStock - item.qty
+                            totalStock: newTotalStock
                         });
+
+                        emitInventoryMovement(invItem, order.outletId, location.locationName, 'consume', item.qty, newTotalStock);
                     }
                 }
             }

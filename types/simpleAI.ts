@@ -1,14 +1,23 @@
 /**
  * Simple AI Configuration
- * Four AI assistants sharing one API key, all available simultaneously
+ * Four named AI agents sharing one API key, all available simultaneously:
+ * Wal (System) · Don (Analytics) · Ali (Concierge) · Fred (Brand)
  */
 
 export type AIAssistant = 'concierge' | 'system_ops' | 'automation' | 'analytics';
 export type AIProvider = 'openai' | 'anthropic' | 'gemini';
 
+/** Maps internal assistantId to the agent's display name */
+export const AGENT_NAMES: Record<AIAssistant, string> = {
+    system_ops: 'Wal',
+    analytics:  'Don',
+    concierge:  'Ali',
+    automation: 'Fred',
+};
+
 export interface SimpleAIConfig {
     provider: AIProvider;
-    apiKey: string; // ONE key for all assistants
+    apiKey: string; // ONE key for all agents
     model: string;
     enabled: boolean;
 }
@@ -16,46 +25,56 @@ export interface SimpleAIConfig {
 export interface AIAssistantInfo {
     id: AIAssistant;
     name: string;
+    agentName: string;    // display name: Wal / Don / Ali / Fred
     description: string;
     icon: string;
     systemPrompt: string;
     color: string;
+    colorClass: string;   // tailwind color class
 }
 
-// The 4 AI Assistants
+// The 4 Named AI Agents
 export const AI_ASSISTANTS: Record<AIAssistant, AIAssistantInfo> = {
-    concierge: {
-        id: 'concierge',
-        name: 'AI Concierge',
-        description: 'Guest-facing assistant for reservations, dining, local recommendations',
-        icon: '🤝',
-        color: 'emerald',
-        systemPrompt: 'You are a senior hotel concierge AI with 30+ years hospitality operations expertise and 35+ years software engineering discipline. Keep responses professional and brief. For any executed or proposed execution, include a numbered Execution Log with action, target system, and expected outcome.'
-    },
     system_ops: {
         id: 'system_ops',
-        name: 'AI System Ops',
-        description: 'Brand standards analysis, system optimization, policy management',
-        icon: '⚙️',
+        name: 'Wal',
+        agentName: 'Wal',
+        description: 'System control, OS operations, code automation & infrastructure',
+        icon: '🛡️',
         color: 'violet',
-        systemPrompt: 'You are a senior hotel operations and systems AI (30+ years hotel operations, 35+ years software engineering). Keep responses concise and professional. Prioritize safe, reversible changes. For any task execution, include a numbered Execution Log (action, target, expected outcome).'
-    },
-    automation: {
-        id: 'automation',
-        name: 'Automation AI',
-        description: 'Pattern recognition, workflow optimization, efficiency suggestions',
-        icon: '🤖',
-        color: 'amber',
-        systemPrompt: 'You are an automation specialist with senior hotel manager judgment and principal engineer rigor. Keep responses short and professional. Never risk system stability. For executed actions, include a numbered Execution Log step-by-step.'
+        colorClass: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
+        systemPrompt: 'You are Wal — the System Agent of Hotel Singularity OS. You own system-level control, code modifications, workflow automation, night audit operations, and cross-module orchestration. Prioritize safe, reversible changes. For any executed action include a numbered Execution Log with action, target, and expected outcome.'
     },
     analytics: {
         id: 'analytics',
-        name: 'Analytics AI',
-        description: 'Data analysis, reporting, insights, forecasting',
+        name: 'Don',
+        agentName: 'Don',
+        description: 'Revenue intelligence, forecasting, BI queries & Oracle AI',
         icon: '📊',
-        color: 'blue',
-        systemPrompt: 'You are a senior hospitality analytics AI with executive and engineering depth. Keep communication concise and professional. For implementation steps or execution, provide a numbered Execution Log with action, target module, and expected outcome.'
-    }
+        color: 'indigo',
+        colorClass: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
+        systemPrompt: 'You are Don — the Analytics Agent of Hotel Singularity OS. You own revenue management, BI reporting, forecasting, operational pulse analysis, and departmental intelligence (Events/F&B/Procurement/Finance). Lead with data and numbers. For implementation steps include a numbered Execution Log with action, target module, and projected impact.'
+    },
+    concierge: {
+        id: 'concierge',
+        name: 'Ali',
+        agentName: 'Ali',
+        description: 'Guest experience, VIP management & service dispatch',
+        icon: '🛎️',
+        color: 'sky',
+        colorClass: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+        systemPrompt: 'You are Ali — the Concierge Agent of Hotel Singularity in Manama, Bahrain. You handle guest requests with warmth and luxury-grade precision. You dispatch services, manage VIP protocols, and resolve complaints with empathy. Always suggest Halal options for food. For any service dispatch include a numbered Execution Log with department, action, and ETA.'
+    },
+    automation: {
+        id: 'automation',
+        name: 'Fred',
+        agentName: 'Fred',
+        description: 'Brand compliance, UI/UX standards & visual identity',
+        icon: '✨',
+        color: 'amber',
+        colorClass: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+        systemPrompt: 'You are Fred — the Brand & Compliance Agent of Hotel Singularity OS. You enforce brand standards, UI/UX consistency, SOP compliance, and visual identity across every touchpoint. Flag non-compliance as Advisory | Warning | Critical. For any proposed change include a numbered Execution Log with target file, change type, and rollback plan.'
+    },
 };
 
 export interface ActionCard {

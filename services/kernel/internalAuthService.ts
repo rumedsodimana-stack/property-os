@@ -1,9 +1,11 @@
 /**
  * Hotel Singularity OS — Internal Authentication Service
- * Self-contained session management. No external auth provider required.
- * Uses Firestore `users` collection for identity + SHA-256 PIN hashing.
+ * Strict role-backed Firebase auth via backend-issued custom tokens.
  */
-import { fetchItems } from './firestoreService';
+import { signInWithCustomToken, signOut } from 'firebase/auth';
+import { signInAnonymously } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions } from './firebase';
 
 // ─── Role Permission Matrix ──────────────────────────────────────────────────
 
@@ -18,6 +20,9 @@ export type OSPermission =
     | 'manage_shifts'
     | 'check_in_guest'
     | 'check_out_guest'
+    | 'issue_guest_key'
+    | 'revoke_guest_key'
+    | 'resend_guest_key'
     | 'mark_room_clean'
     | 'create_reservation'
     | 'view_financials'
@@ -27,21 +32,24 @@ const ROLE_PERMISSIONS: Record<OSRole, OSPermission[]> = {
     GM: [
         'approve_leave', 'reject_leave', 'void_transaction', 'approve_recipe',
         'create_event', 'manage_shifts', 'check_in_guest', 'check_out_guest',
+        'issue_guest_key', 'revoke_guest_key', 'resend_guest_key',
         'mark_room_clean', 'create_reservation', 'view_financials', 'manage_staff'
     ],
     Manager: [
         'approve_leave', 'reject_leave', 'void_transaction', 'approve_recipe',
         'create_event', 'manage_shifts', 'check_in_guest', 'check_out_guest',
+        'issue_guest_key', 'revoke_guest_key', 'resend_guest_key',
         'mark_room_clean', 'create_reservation', 'view_financials'
     ],
     Finance: [
         'void_transaction', 'view_financials', 'approve_recipe'
     ],
     FrontDesk: [
-        'check_in_guest', 'check_out_guest', 'create_reservation'
+        'check_in_guest', 'check_out_guest', 'issue_guest_key', 'revoke_guest_key', 'resend_guest_key', 'create_reservation'
     ],
     Supervisor: [
         'create_event', 'manage_shifts', 'check_in_guest', 'check_out_guest',
+        'issue_guest_key', 'revoke_guest_key', 'resend_guest_key',
         'mark_room_clean', 'create_reservation'
     ],
     Chef: [
@@ -56,232 +64,250 @@ const ROLE_PERMISSIONS: Record<OSRole, OSPermission[]> = {
 // ─── Session Types ────────────────────────────────────────────────────────────
 
 export interface OSSession {
-    userId: string;       // matches `principal` in users collection
+    userId: string;
     fullName: string;
     role: OSRole;
     hotelId: string;
     loginAt: number;
-    expiresAt: number;    // 12-hour rolling session
+    expiresAt: number;
     backendToken?: string;
     backendSessionId?: string;
+    authMode?: 'custom_token' | 'anonymous_demo';
+}
+
+interface IssueOperatorSessionResponse {
+    token: string;
+    sessionId: string;
+    expiresAt: number;
+    user: {
+        userId: string;
+        principal: string;
+        fullName: string;
+        role: OSRole;
+        hotelId: string;
+    };
 }
 
 const SESSION_KEY = 'hs_os_session';
-const SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // 12 hours
+const SESSION_DURATION_MS = 12 * 60 * 60 * 1000;
+const DEMO_MODE_ENABLED = import.meta.env.VITE_ENABLE_DEMO_USERS === 'true';
+const DEMO_PIN = String(import.meta.env.VITE_DEMO_USER_PIN || '1234');
+/** Dev-only: skip login and auto-enter as GM. Set VITE_SKIP_LOGIN=true in .env.local */
+const SKIP_LOGIN_ENABLED = import.meta.env.DEV && import.meta.env.VITE_SKIP_LOGIN === 'true';
 
-const getEnv = (key: string): string => {
+const DEMO_USERS: Array<{ userId: string; fullName: string; role: OSRole; hotelId: string }> = [
+    { userId: 'GM001', fullName: 'System General Manager', role: 'GM', hotelId: 'demo_property_h1' },
+    { userId: 'FD001', fullName: 'Front Desk Agent', role: 'FrontDesk', hotelId: 'demo_property_h1' },
+    { userId: 'FIN001', fullName: 'Finance Controller', role: 'Finance', hotelId: 'demo_property_h1' },
+    { userId: 'GUEST001', fullName: 'Guest Demo', role: 'Guest', hotelId: 'demo_property_h1' }
+];
+
+const parseSession = (): OSSession | null => {
     try {
-        // @ts-ignore - import.meta.env is handled by Vite
-        if (import.meta && import.meta.env && import.meta.env[key]) {
-            // @ts-ignore
-            return import.meta.env[key];
-        }
-    } catch { }
-    try {
-        if (typeof process !== 'undefined' && process.env && process.env[key]) {
-            return process.env[key] as string;
-        }
-    } catch { }
-    return '';
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as OSSession;
+        if (!parsed?.userId || !parsed?.role || !parsed?.expiresAt) return null;
+        return parsed;
+    } catch {
+        return null;
+    }
 };
 
-const demoUsersEnabled = getEnv('VITE_ENABLE_DEMO_USERS') === 'true';
-const demoPin = getEnv('VITE_DEMO_USER_PIN');
-
-const FALLBACK_USERS = demoUsersEnabled && !!demoPin ? [
-    { principal: 'GM001', employeeId: 'GM001', fullName: 'System General Manager', role: 'GM', hotelId: 'H1', pin: demoPin },
-    { principal: 'FD001', employeeId: 'FD001', fullName: 'Front Desk Agent', role: 'FrontDesk', hotelId: 'H1', pin: demoPin },
-    { principal: 'FIN001', employeeId: 'FIN001', fullName: 'Finance Controller', role: 'Finance', hotelId: 'H1', pin: demoPin },
-    { principal: 'GUEST001', employeeId: 'GUEST001', fullName: 'Guest Demo', role: 'Guest', hotelId: 'H1', pin: demoPin },
-] as const : [];
-
-const DIGIT_WORDS: Record<string, string> = {
-    ZERO: '0',
-    ONE: '1',
-    TWO: '2',
-    THREE: '3',
-    FOUR: '4',
-    FIVE: '5',
-    SIX: '6',
-    SEVEN: '7',
-    EIGHT: '8',
-    NINE: '9',
-};
-
-const normalizePrincipal = (value: string): string => {
-    const compact = (value || '')
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, '');
-    return Object.entries(DIGIT_WORDS).reduce(
-        (acc, [word, digit]) => acc.replace(new RegExp(word, 'g'), digit),
-        compact
+const isBackendUnavailableError = (error: any): boolean => {
+    const message = String(error?.message || error?.code || '').toLowerCase();
+    return (
+        message.includes('unavailable') ||
+        message.includes('internal') ||
+        message.includes('cors') ||
+        message.includes('failed to fetch') ||
+        message.includes('networkerror') ||
+        message.includes('network error') ||
+        message.includes('fetch') ||
+        message.includes('deadline') ||
+        message.includes('timeout') ||
+        // Firebase Functions not deployed / unreachable
+        message.includes('not-found') === false && message.includes('functions/') ||
+        error?.code === 'functions/unavailable' ||
+        error?.code === 'functions/internal' ||
+        error?.code === 'functions/deadline-exceeded'
     );
 };
 
-const canonicalPrincipal = (value: string): string => {
-    const normalized = normalizePrincipal(value);
-    const match = normalized.match(/^([A-Z]+)(\d+)$/);
-    if (!match) return normalized;
-    const [, prefix, digits] = match;
-    return `${prefix}${Number(digits)}`;
+const normalizeAuthError = (error: any): Error => {
+    const message = String(error?.message || '').toLowerCase();
+    if (message.includes('not-found') || error?.code === 'functions/not-found') {
+        return new Error('Employee not found. Check your ID and try again.');
+    }
+    if (message.includes('permission-denied') || error?.code === 'functions/permission-denied') {
+        return new Error('Incorrect PIN. Please try again.');
+    }
+    if (isBackendUnavailableError(error)) {
+        return new Error('Authentication backend is unavailable. Verify Firebase Functions and try again.');
+    }
+    return new Error(error?.message || 'Login failed.');
 };
 
-// ─── PIN Hashing ─────────────────────────────────────────────────────────────
+const resolveDemoUser = (employeeId: string, pin: string): OSSession | null => {
+    if (!DEMO_MODE_ENABLED) return null;
+    if (pin !== DEMO_PIN) return null;
+    const normalized = employeeId.trim().toUpperCase();
+    const found = DEMO_USERS.find((user) => user.userId === normalized);
+    if (!found) return null;
 
-/**
- * SHA-256 hash a PIN string using the Web Crypto API (built into every browser).
- * No external library needed.
- */
-async function hashPin(pin: string): Promise<string> {
-    // Preferred: Web Crypto SHA-256
-    if (typeof globalThis !== 'undefined' && globalThis.crypto?.subtle) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(pin);
-        const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    // Fallback for environments where SubtleCrypto is unavailable.
-    // Not cryptographically secure; used only to avoid auth runtime failure.
-    let hash = 0;
-    for (let i = 0; i < pin.length; i++) {
-        hash = ((hash << 5) - hash) + pin.charCodeAt(i);
-        hash |= 0;
-    }
-    return `fallback_${Math.abs(hash).toString(16).padStart(8, '0')}`;
-}
+    return {
+        userId: found.userId,
+        fullName: found.fullName,
+        role: found.role,
+        hotelId: found.hotelId,
+        loginAt: Date.now(),
+        expiresAt: Date.now() + SESSION_DURATION_MS,
+        authMode: 'anonymous_demo'
+    };
+};
 
 // ─── Auth Service ────────────────────────────────────────────────────────────
 
 export const internalAuthService = {
-
-    /**
-     * Authenticate a user by employeeId + PIN.
-     * Looks up the user in Firestore, validates hashed PIN.
-     * Falls back to plain-text PIN comparison for users without a hash yet
-     * (first-login grace period — the hash is stored after first login).
-     */
-    async login(employeeId: string, pin: string): Promise<OSSession> {
-        const normalizedInput = normalizePrincipal(employeeId);
-        let users: any[] = [];
-        try {
-            users = await fetchItems<any>('users');
-        } catch (error) {
-            console.warn('[Auth] Unable to read users collection, using local fallback accounts.');
-        }
-
-        const canonicalInput = canonicalPrincipal(employeeId);
-        const match = users.find((u: any) =>
-            normalizePrincipal(u.principal || '') === normalizedInput ||
-            normalizePrincipal(u.email || '') === normalizedInput ||
-            normalizePrincipal(u.employeeId || '') === normalizedInput ||
-            canonicalPrincipal(u.principal || '') === canonicalInput ||
-            canonicalPrincipal(u.email || '') === canonicalInput ||
-            canonicalPrincipal(u.employeeId || '') === canonicalInput ||
-            u.principal === employeeId ||
-            u.email === employeeId ||
-            u.employeeId === employeeId
-        ) || FALLBACK_USERS.find((u: any) =>
-            normalizePrincipal(u.principal || '') === normalizedInput ||
-            normalizePrincipal(u.employeeId || '') === normalizedInput ||
-            canonicalPrincipal(u.principal || '') === canonicalInput ||
-            canonicalPrincipal(u.employeeId || '') === canonicalInput ||
-            u.principal === employeeId ||
-            u.employeeId === employeeId
-        );
-
-        if (!match) {
-            throw new Error('Employee not found. Check your ID and try again.');
-        }
-
-        const inputHash = await hashPin(pin);
-
-        // Support hashed PINs (production) and plain-text PINs (initial seed)
-        const storedPin = match.pinHash || match.pin || '';
-        const isHashMatch = storedPin === inputHash;
-        const isPlainMatch = storedPin === pin; // first-login fallback
-
-        if (!isHashMatch && !isPlainMatch) {
-            throw new Error('Incorrect PIN. Please try again.');
-        }
-
-        const role = (match.role as OSRole) || 'Staff';
-        const session: OSSession = {
-            userId: match.principal || match.id,
-            fullName: match.fullName || match.name || employeeId,
-            role,
-            hotelId: match.hotelId || 'H1',
-            loginAt: Date.now(),
-            expiresAt: Date.now() + SESSION_DURATION_MS,
-        };
-
-        // Obtain a short-lived backend token for privileged operations.
-        // If unavailable (offline/demo), local session still works for non-privileged UX.
-        try {
-            const { httpsCallable } = await import('firebase/functions');
-            const { functions } = await import('./firebase');
-            const issueOperatorSession = httpsCallable(functions, 'issueOperatorSession');
-            const tokenResult = await issueOperatorSession({
-                userId: session.userId,
-                role: session.role,
-                hotelId: session.hotelId
-            });
-            const tokenData = tokenResult.data as { token?: string; sessionId?: string; expiresAt?: number };
-            if (tokenData?.token) {
-                session.backendToken = tokenData.token;
-                session.backendSessionId = tokenData.sessionId;
-                if (tokenData.expiresAt) {
-                    session.expiresAt = Math.min(session.expiresAt, tokenData.expiresAt);
-                }
+    async ensureFirebaseClientAuth(): Promise<void> {
+        if (auth.currentUser) return;
+        const session = parseSession();
+        if (session?.authMode === 'anonymous_demo') {
+            if (!DEMO_MODE_ENABLED) {
+                throw new Error('Demo login mode is disabled. Please sign in again.');
             }
-        } catch (error) {
-            console.warn('[Auth] Backend session issuance unavailable; proceeding with local session.', error);
+            try {
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.warn('[Auth] Anonymous auth unavailable; continuing in demo fallback mode.', error);
+            }
+            return;
         }
+        if (!session?.backendToken) {
+            throw new Error('No active Firebase session token. Please sign in again.');
+        }
+        await signInWithCustomToken(auth, session.backendToken);
+    },
+
+    async login(employeeId: string, pin: string): Promise<OSSession> {
+        const cleanEmployeeId = employeeId.trim();
+        const cleanPin = pin.trim();
+
+        if (!cleanEmployeeId || !cleanPin) {
+            throw new Error('Employee ID and PIN are required.');
+        }
+
+        if (!/^\d{4,6}$/.test(cleanPin)) {
+            throw new Error('PIN must be 4–6 digits');
+        }
+
+        const issueOperatorSession = httpsCallable<
+            { employeeId: string; pin: string },
+            IssueOperatorSessionResponse
+        >(functions, 'issueOperatorSession');
+
+        let response: IssueOperatorSessionResponse;
+        try {
+            const result = await issueOperatorSession({ employeeId: cleanEmployeeId, pin: cleanPin });
+            response = result.data;
+        } catch (error: any) {
+            const normalizedError = normalizeAuthError(error);
+            const demoSession = resolveDemoUser(cleanEmployeeId, cleanPin);
+            // Fall back to demo session whenever the backend is unreachable (network, CORS,
+            // function not deployed, timeout, etc.) and valid demo credentials were supplied.
+            if (demoSession && isBackendUnavailableError(error)) {
+                try {
+                    await signInAnonymously(auth);
+                } catch (anonymousError) {
+                    console.warn('[Auth] Anonymous auth unavailable; continuing in demo fallback mode.', anonymousError);
+                }
+                localStorage.setItem(SESSION_KEY, JSON.stringify(demoSession));
+                return demoSession;
+            }
+            throw normalizedError;
+        }
+
+        if (!response?.token || !response?.user?.userId) {
+            throw new Error('Authentication backend returned an invalid session payload.');
+        }
+
+        try {
+            await signInWithCustomToken(auth, response.token);
+        } catch {
+            throw new Error('Failed to establish Firebase session. Check Firebase Auth configuration.');
+        }
+
+        const session: OSSession = {
+            userId: response.user.userId,
+            fullName: response.user.fullName || cleanEmployeeId,
+            role: response.user.role || 'Staff',
+            hotelId: response.user.hotelId || '',
+            loginAt: Date.now(),
+            expiresAt: Math.min(Date.now() + SESSION_DURATION_MS, response.expiresAt || Number.MAX_SAFE_INTEGER),
+            backendToken: response.token,
+            backendSessionId: response.sessionId,
+            authMode: 'custom_token'
+        };
 
         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
         return session;
     },
 
-    /**
-     * Log the current user out and clear session.
-     */
     logout(): void {
         localStorage.removeItem(SESSION_KEY);
+        void signOut(auth).catch((error) => {
+            console.warn('[Auth] Firebase sign-out failed:', error);
+        });
     },
 
     /**
-     * Get the current active session. Returns null if none or expired.
+     * Dev-only bypass: create and store a GM demo session without credentials.
+     * Only works when VITE_SKIP_LOGIN=true and in development.
      */
-    getSession(): OSSession | null {
+    async bypassLoginAsDemo(): Promise<OSSession | null> {
+        if (!SKIP_LOGIN_ENABLED) return null;
+        const gm = DEMO_USERS.find((u) => u.role === 'GM');
+        if (!gm) return null;
+        const session: OSSession = {
+            userId: gm.userId,
+            fullName: gm.fullName,
+            role: gm.role,
+            hotelId: gm.hotelId,
+            loginAt: Date.now(),
+            expiresAt: Date.now() + SESSION_DURATION_MS,
+            authMode: 'anonymous_demo',
+        };
         try {
-            const raw = localStorage.getItem(SESSION_KEY);
-            if (!raw) return null;
-            const session: OSSession = JSON.parse(raw);
-            if (Date.now() > session.expiresAt) {
-                localStorage.removeItem(SESSION_KEY);
-                return null;
-            }
-            // Roll session expiry on activity
-            session.expiresAt = Date.now() + SESSION_DURATION_MS;
-            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-            return session;
-        } catch {
+            await signInAnonymously(auth);
+        } catch (err) {
+            console.warn('[Auth] Anonymous sign-in failed; continuing in bypass mode.', err);
+        }
+        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+        return session;
+    },
+
+    getSession(): OSSession | null {
+        const session = parseSession();
+        if (!session) return null;
+
+        if (Date.now() > session.expiresAt) {
+            localStorage.removeItem(SESSION_KEY);
             return null;
         }
+
+        const rolled: OSSession = {
+            ...session,
+            expiresAt: Math.min(Date.now() + SESSION_DURATION_MS, session.expiresAt)
+        };
+        localStorage.setItem(SESSION_KEY, JSON.stringify(rolled));
+        return rolled;
     },
 
-    /**
-     * Check if the current role has a specific permission.
-     */
     hasPermission(permission: OSPermission, role?: OSRole): boolean {
         const checkRole = role || this.getSession()?.role || 'Guest';
         return ROLE_PERMISSIONS[checkRole]?.includes(permission) ?? false;
     },
 
-    /**
-     * Get the display label for a role.
-     */
     getRoleLabel(role: OSRole): string {
         const labels: Record<OSRole, string> = {
             GM: 'General Manager',

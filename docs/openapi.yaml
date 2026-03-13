@@ -1,0 +1,65 @@
+openapi: 3.0.3
+info:
+  title: Hotel Singularity Open API
+  version: 0.1.0
+servers:
+  - url: https://REGION-PROJECT.cloudfunctions.net/api
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HS256 JWT
+paths:
+  /reservations:
+    get:
+      summary: List reservations
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, maximum: 200 }
+      responses:
+        '200':
+          description: Reservations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+  /rooms:
+    get:
+      summary: List rooms
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Rooms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Room'
+components:
+  schemas:
+    Reservation:
+      type: object
+      properties:
+        id: { type: string }
+        guestId: { type: string }
+        roomId: { type: string }
+        status: { type: string }
+        checkIn: { type: string, format: date-time }
+        checkOut: { type: string, format: date-time }
+    Room:
+      type: object
+      properties:
+        id: { type: string }
+        number: { type: string }
+        status: { type: string }
+        typeId: { type: string }

@@ -93,3 +93,44 @@ export const defaultPropertyConfig: PropertyConfiguration = {
     },
     lastUpdated: new Date().toISOString()
 };
+
+export interface BuilderSandboxConfiguration {
+    enabled: boolean;
+    writablePathPrefixes: string[];
+    blockedPathSegments: string[];
+    allowedExtensions: string[];
+    maxWriteBytes: number;
+}
+
+export interface BuilderAutopilotConfiguration {
+    enabled: boolean;
+    cycleIntervalSeconds: number;
+    maxConcurrentCycles: number;
+}
+
+export interface BuilderConfiguration {
+    enabled: boolean;
+    owner: string;
+    benchmarkTargets: string[];
+    autopilot: BuilderAutopilotConfiguration;
+    sandbox: BuilderSandboxConfiguration;
+    lastRunAt?: string;
+}
+
+export const defaultBuilderConfiguration: BuilderConfiguration = {
+    enabled: true,
+    owner: 'SYSTEM',
+    benchmarkTargets: ['Oracle OPERA Cloud', 'Mews', 'Cloudbeds', 'Stayntouch', 'Apaleo'],
+    autopilot: {
+        enabled: false,
+        cycleIntervalSeconds: 120,
+        maxConcurrentCycles: 1
+    },
+    sandbox: {
+        enabled: true,
+        writablePathPrefixes: ['components/', 'services/', 'context/', 'src/', 'types/', 'docs/', 'public/', 'App.tsx', 'index.css', 'index.html'],
+        blockedPathSegments: ['..', '.git', '.env', 'node_modules', 'dist/', '.firebase', '.singularity_backups', 'edgeNode/'],
+        allowedExtensions: ['.ts', '.tsx', '.css', '.json', '.md', '.html'],
+        maxWriteBytes: 300000
+    }
+};

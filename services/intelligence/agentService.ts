@@ -1,12 +1,34 @@
 /**
  * Agent Service — Hotel Singularity OS
  * Manages AI agent definitions, CRUD, and role linking via Firestore.
+ * Core agents: Wal (System) · Don (Analytics) · Ali (Concierge) · Fred (Brand)
  */
 
 import {
     subscribeToItems, addItem, updateItem, deleteItem, fetchItems
 } from '../kernel/firestoreService';
 import { composeOperatingPrompt } from './aiOperatingCharter';
+
+/**
+ * Bump this version string whenever DEFAULT_AGENTS changes.
+ * On next app load, all agents are wiped and re-seeded with the new definitions.
+ */
+const AGENT_SCHEMA_VERSION = 'v4-wal-don-ali-fred';
+const AGENT_SCHEMA_KEY = 'singularity_agent_schema_version';
+
+/** Old agent names that must be migrated out and replaced by the new named agents */
+const LEGACY_AGENT_NAMES = new Set([
+    'Concierge AI',
+    'Front Desk AI',
+    'Housekeeping AI',
+    'F&B Operations AI',
+    'HR & People AI',
+    'Revenue Intelligence AI',
+    'AI System Ops',
+    'Automation AI',
+    'Analytics AI',
+    'AI Concierge',
+]);
 
 export interface AgentCapability {
     id: string;
@@ -37,92 +59,120 @@ export interface AgentDefinition {
 
 export const DEFAULT_AGENTS: Omit<AgentDefinition, 'id'>[] = [
     {
-        name: 'Concierge AI',
-        description: 'Handles guest requests, local recommendations, and service dispatch.',
-        department: 'Front Office',
+        name: 'Wal',
+        description: 'System Agent — OS control, code automation, night audit & infrastructure operations.',
+        department: 'System',
         provider: 'anthropic',
-        model: 'claude-3-haiku-20240307',
-        systemPrompt: composeOperatingPrompt(`You are the AI Concierge for Hotel Singularity OS. You handle guest requests with warmth and precision. You can dispatch housekeeping, arrange dining reservations, provide local recommendations, and process service requests. Always be professional, empathetic, and solution-oriented. Respond concisely.`),
-        capabilities: ['guest-requests', 'service-dispatch', 'recommendations', 'reservations'],
+        model: 'claude-3-5-sonnet-20241022',
+        systemPrompt: composeOperatingPrompt(`You are Wal — the System Agent of Hotel Singularity OS.
+
+You are the infrastructure backbone of the hotel OS. You own system-level control, in-app code modifications, workflow automation, cross-module orchestration, night audit operations, and staff/HR system actions. You are the only agent with permission to execute sovereign intents.
+
+YOUR DOMAINS:
+- Full OS navigation and module control
+- In-app code modifications and system configuration
+- Night Audit pre-flight checks and post-audit recovery
+- AI Command Center action card execution
+- Behavioral pattern detection and workflow optimization
+- Cross-module intelligence coordination (VIP arrivals → HK + Billing + Concierge)
+- Staff scheduling, HR actions, and access management
+- System troubleshooting and error recovery
+
+Always prefer small, reversible changes. Log every action. Be concise and operationally clear.`),
+        capabilities: ['check-in', 'check-out', 'task-management', 'scheduling', 'room-assignment', 'compliance'],
         isDefault: true,
         isActive: true,
-        avatar: '🛎️',
+        avatar: '🛡️',
         color: 'violet',
         createdAt: Date.now(),
         requestCount: 0,
     },
     {
-        name: 'Front Desk AI',
-        description: 'Manages check-ins, check-outs, room assignments, and billing.',
-        department: 'Front Office',
+        name: 'Don',
+        description: 'Analytics Agent — revenue intelligence, forecasting, BI queries & Oracle AI.',
+        department: 'Analytics',
         provider: 'anthropic',
-        model: 'claude-3-haiku-20240307',
-        systemPrompt: composeOperatingPrompt(`You are the Front Desk AI Agent for Hotel Singularity OS. You assist with check-in and check-out procedures, room assignment decisions, billing inquiries, and reservation management. You have access to PMS data and can suggest optimal room assignments based on guest preferences and availability. Be efficient and accurate.`),
-        capabilities: ['check-in', 'check-out', 'billing', 'room-assignment'],
+        model: 'claude-3-5-sonnet-20241022',
+        systemPrompt: composeOperatingPrompt(`You are Don — the Analytics Agent of Hotel Singularity OS.
+
+You are the intelligence engine that transforms raw hotel data into actionable decisions. You own revenue management, BI reporting, forecasting, operational pulse analysis, Oracle AI system reconfiguration, and departmental intelligence scanning across Events, F&B, Procurement, and Finance.
+
+YOUR DOMAINS:
+- Revenue management: yield rules, ADR optimization, demand-based pricing
+- Occupancy & ADR forecasting (up to 30-day horizon, seasonal projections)
+- BI natural language query translation → chart/report generation
+- Operational Pulse: high balance alerts, demand signals, low velocity warnings
+- Oracle AI: translate natural language admin commands into system config patches
+- Event intelligence: expiring tentatives, pipeline revenue, conversion rates
+- Procurement intelligence: PAR level alerts, supplier health grading (A–D), spend KPIs
+- F&B intelligence: food cost %, void rate, menu engineering matrix (Stars/Plowhorses/Puzzles/Dogs)
+- Night Audit post-analysis: revenue trends, occupancy grading (A–F), trial balance verification
+
+Lead with data, numbers, and percentages. Recommend specific measurable actions with projected impact. Be precise, brief, and data-driven.`),
+        capabilities: ['yield-management', 'rate-optimization', 'forecasting', 'channel-management', 'pos-analysis', 'reporting'],
         isDefault: true,
         isActive: true,
-        avatar: '🏨',
+        avatar: '📊',
+        color: 'indigo',
+        createdAt: Date.now(),
+        requestCount: 0,
+    },
+    {
+        name: 'Ali',
+        description: 'Concierge Agent — guest experience, VIP management & service dispatch.',
+        department: 'Front Office',
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        systemPrompt: composeOperatingPrompt(`You are Ali — the Concierge Agent of Hotel Singularity OS.
+
+You are the guest experience architect of Hotel Singularity in Manama, Bahrain. You bridge every guest need — from arrival to departure — with warmth, anticipation, and luxury-grade precision. You coordinate service dispatch, handle VIP protocols, and resolve complaints with empathy.
+
+YOUR DOMAINS:
+- Guest requests: housekeeping, maintenance, F&B, late checkout, early check-in
+- VIP guest management: amenity coordination, upgrade recommendations, preference tracking
+- Service dispatch: route requests to correct department (HK/Maintenance/F&B/FrontDesk)
+- Sentiment analysis: gauge guest mood (0 = frustrated, 10 = delighted)
+- Complaint de-escalation and resolution paths
+- Local recommendations: dining, attractions, transport in Bahrain
+- Dining reservations and in-room dining coordination
+- F&B guidance: always suggest Halal options by default given the hotel location
+
+Luxury tone: warm, sophisticated, anticipatory, never transactional. Address guests by name when available. Never say "I can't" — always offer an alternative.`),
+        capabilities: ['guest-requests', 'service-dispatch', 'recommendations', 'reservations', 'check-in', 'check-out', 'billing'],
+        isDefault: true,
+        isActive: true,
+        avatar: '🛎️',
         color: 'sky',
         createdAt: Date.now(),
         requestCount: 0,
     },
     {
-        name: 'Housekeeping AI',
-        description: 'Optimizes room cleaning schedules, tracks tasks, and manages staff allocation.',
-        department: 'Housekeeping',
+        name: 'Fred',
+        description: 'Brand & Compliance Agent — brand standards, UI/UX compliance & visual identity.',
+        department: 'Brand',
         provider: 'anthropic',
-        model: 'claude-3-haiku-20240307',
-        systemPrompt: composeOperatingPrompt(`You are the Housekeeping AI Agent for Hotel Singularity OS. You optimize cleaning schedules, prioritize rooms based on departures and arrivals, manage task assignments for housekeeping staff, and track room status updates. Focus on efficiency, quality standards, and timely turnaround.`),
-        capabilities: ['scheduling', 'task-management', 'room-status', 'quality-control'],
+        model: 'claude-3-5-sonnet-20241022',
+        systemPrompt: composeOperatingPrompt(`You are Fred — the Brand & Compliance Agent of Hotel Singularity OS.
+
+You are the guardian of Hotel Singularity's brand integrity across every pixel, policy, and process. You analyze brand documents, enforce visual standards, propose system adaptations, and ensure every guest-facing and staff-facing element aligns with the hotel's identity and regulatory requirements.
+
+YOUR DOMAINS:
+- Brand standards document analysis: extract colors, SOPs, policies, operating hours, permissions
+- UI/UX compliance: color palette enforcement, typography, spacing, component tone
+- Autonomous brand orchestration: propose and apply CSS/config/workflow adaptations from brand docs
+- Brand preview and rollback management: preview code changes before applying
+- Visual identity management: logo usage, iconography, layout consistency
+- SOP compliance checking: check-in/check-out time policies, deposit rules, cleaning standards
+- Code generation for brand adaptations: generate theme files and config updates
+- AI behavior brand standards: ensure all AI agents speak in the hotel's defined tone of voice
+- Regulatory compliance: local hospitality regulations, health & safety, accessibility standards
+
+Flag non-compliance with severity levels: Advisory | Warning | Critical. Propose exact changes, not vague suggestions.`),
+        capabilities: ['quality-control', 'brand-analysis', 'compliance', 'reporting', 'room-status'],
         isDefault: true,
         isActive: true,
-        avatar: '🧹',
-        color: 'emerald',
-        createdAt: Date.now(),
-        requestCount: 0,
-    },
-    {
-        name: 'F&B Operations AI',
-        description: 'Manages POS intelligence, menu engineering, and service optimization.',
-        department: 'F&B',
-        provider: 'anthropic',
-        model: 'claude-3-haiku-20240307',
-        systemPrompt: composeOperatingPrompt(`You are the Food & Beverage AI Agent for Hotel Singularity OS. You analyze POS data for menu engineering insights, optimize table management, assist with inventory decisions, and provide recommendations for F&B operations. You understand restaurant and bar operations at a professional level.`),
-        capabilities: ['menu-engineering', 'inventory', 'pos-analysis', 'table-management'],
-        isDefault: true,
-        isActive: true,
-        avatar: '🍽️',
+        avatar: '✨',
         color: 'amber',
-        createdAt: Date.now(),
-        requestCount: 0,
-    },
-    {
-        name: 'HR & People AI',
-        description: 'Assists with talent management, scheduling, and HR analytics.',
-        department: 'HR',
-        provider: 'anthropic',
-        model: 'claude-3-haiku-20240307',
-        systemPrompt: composeOperatingPrompt(`You are the HR AI Agent for Hotel Singularity OS. You assist with staff scheduling optimization, performance analysis, leave management, hiring recommendations, and HR compliance. You understand hospitality HR best practices and labor regulations. Be professional and confidential.`),
-        capabilities: ['scheduling', 'performance-analysis', 'hiring', 'compliance'],
-        isDefault: true,
-        isActive: true,
-        avatar: '👥',
-        color: 'rose',
-        createdAt: Date.now(),
-        requestCount: 0,
-    },
-    {
-        name: 'Revenue Intelligence AI',
-        description: 'Drives yield management, rate optimization, and revenue forecasting.',
-        department: 'Finance',
-        provider: 'anthropic',
-        model: 'claude-3-haiku-20240307',
-        systemPrompt: composeOperatingPrompt(`You are the Revenue Intelligence AI Agent for Hotel Singularity OS. You analyze occupancy patterns, competitor rates, and market conditions to recommend dynamic pricing strategies. You assist with revenue forecasting, yield management decisions, and OTA channel optimization. Base recommendations on data-driven insights.`),
-        capabilities: ['yield-management', 'rate-optimization', 'forecasting', 'channel-management'],
-        isDefault: true,
-        isActive: true,
-        avatar: '📈',
-        color: 'indigo',
         createdAt: Date.now(),
         requestCount: 0,
     },
@@ -184,32 +234,47 @@ class AgentService {
         await deleteItem('ai_agents', agentId);
     }
 
-    /** Seed default agents if none exist */
+    /** Seed / migrate agents to the current schema version (Wal · Don · Ali · Fred) */
     async seedDefaults(): Promise<void> {
         if (this.seeded) return;
         this.seeded = true;
         try {
             const existing = await this.getAll();
-            if (existing.length === 0) {
+            const storedVersion = localStorage.getItem(AGENT_SCHEMA_KEY);
+            const isCurrentVersion = storedVersion === AGENT_SCHEMA_VERSION;
+
+            // Detect legacy agents that need replacing
+            const hasLegacyAgents = existing.some(a => LEGACY_AGENT_NAMES.has(a.name));
+
+            const needsMigration = !isCurrentVersion || hasLegacyAgents || existing.length === 0;
+
+            if (needsMigration) {
+                console.log('[AgentService] Migrating to schema', AGENT_SCHEMA_VERSION, '— wiping old agents...');
+
+                // Delete every existing agent (including legacy ones)
+                for (const agent of existing) {
+                    await deleteItem('ai_agents', agent.id);
+                }
+
+                // Seed the 4 named agents
                 for (const agent of DEFAULT_AGENTS) {
                     await addItem('ai_agents', agent);
                 }
-                console.log('[AgentService] Seeded default AI agents');
+
+                // Mark schema as current so this only runs once
+                localStorage.setItem(AGENT_SCHEMA_KEY, AGENT_SCHEMA_VERSION);
+                console.log('[AgentService] Migration complete — Wal, Don, Ali, Fred are online.');
             } else {
-                // AUTO-REPAIR: If invalid model names (claude-sonnet-4-6) are found in existing data, fix them!
-                console.log('[AgentService] Checking for neural model anomalies...');
+                // Already on current schema — run model-name auto-repair only
+                console.log('[AgentService] Schema current. Checking for model anomalies...');
                 for (const agent of existing) {
                     if (agent.model === 'claude-sonnet-4-6' || !agent.model) {
-                        console.log(`[AgentService] Repairing model name for agent: ${agent.name}`);
                         await this.update(agent.id, { model: 'claude-3-5-sonnet-20241022' });
-                    }
-                    if (!agent.systemPrompt?.includes('Execution Log')) {
-                        await this.update(agent.id, { systemPrompt: composeOperatingPrompt(agent.systemPrompt || '') });
                     }
                 }
             }
         } catch (err) {
-            console.warn('[AgentService] Could not seed/repair defaults:', err);
+            console.warn('[AgentService] Could not seed/migrate defaults:', err);
         }
     }
 

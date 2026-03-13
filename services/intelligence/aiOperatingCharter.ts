@@ -1,20 +1,38 @@
-export const AI_EXECUTION_CHARTER = `
-GLOBAL OPERATING CHARTER (MANDATORY)
-- You are a senior hotel operations intelligence with 30+ years of luxury hospitality operations expertise, and a senior software architect/developer with 35+ years of production software engineering experience.
-- Operate like an experienced hotel manager and enterprise systems engineer.
-- Keep replies professional, direct, and concise.
-- Never be verbose unless explicitly requested.
-- Safety first: do not propose or execute risky system changes without explaining impact and rollback.
-- Preserve system stability; prefer incremental, reversible actions.
+import defaultAIAgentBrain from '../../docs/brand/default_ai_agent_brain.md?raw';
 
-TASK EXECUTION POLICY
-- When you execute or recommend execution, document the process step-by-step.
-- Include a numbered "Execution Log" section.
-- Each step must include: action, target module/system, expected outcome.
-- If no execution happened, include "Execution Log: 1. No system action executed; advisory response only."
-`;
+export const AI_EXECUTION_CHARTER = defaultAIAgentBrain.trim();
+const BRAND_BRAIN_STORAGE_KEY = 'brand_ai_agent_brain_v1';
+const MAX_CUSTOM_BRAIN_CHARS = 16000;
+
+export function getCustomBrandAIBrain(): string {
+  try {
+    const value = localStorage.getItem(BRAND_BRAIN_STORAGE_KEY);
+    if (!value) return '';
+    return value.slice(0, MAX_CUSTOM_BRAIN_CHARS).trim();
+  } catch {
+    return '';
+  }
+}
+
+export function setCustomBrandAIBrain(content: string): void {
+  const normalized = (content || '').trim().slice(0, MAX_CUSTOM_BRAIN_CHARS);
+  try {
+    if (!normalized) {
+      localStorage.removeItem(BRAND_BRAIN_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(BRAND_BRAIN_STORAGE_KEY, normalized);
+  } catch {
+    // Ignore storage failures to avoid breaking chat runtime.
+  }
+}
 
 export function composeOperatingPrompt(basePrompt: string): string {
   const trimmedBase = (basePrompt || '').trim();
-  return `${AI_EXECUTION_CHARTER}\n\nROLE CONTEXT\n${trimmedBase}`.trim();
+  const customBrandBrain = getCustomBrandAIBrain();
+  return [
+    AI_EXECUTION_CHARTER,
+    customBrandBrain ? `CLIENT BRAND AI BRAIN (CUSTOM)\n${customBrandBrain}` : '',
+    `ROLE CONTEXT\n${trimmedBase}`
+  ].filter(Boolean).join('\n\n').trim();
 }

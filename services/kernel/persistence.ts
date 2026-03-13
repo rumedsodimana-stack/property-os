@@ -1,19 +1,23 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import {
     Room, Reservation, User, Folio, MasterInventoryItem,
     BanquetEvent, Outlet, PosOrder, Asset, MaintenanceTask, MenuItem,
     Candidate, TrainingModule, Shift, PayrollRun, Supplier, GLAccount,
     PurchaseOrder, ProcurementRequest, RFQ, Invoice, CashierDrop,
     Recipe, RecipeDraft, Incident, Task, Visitor, Table, EmployeeProfile,
-    YieldRule,
+    YieldRule, CompsetSnapshot, DemandEvent, RateRecommendation, RatePushLog, LosRestriction,
     ShiftPattern, RosterShift, SystemRole,
-    BusinessBlock, LedgerEntry, BrandDocument, BrandChange
+    BusinessBlock, LedgerEntry, BrandDocument, BrandChange, GuestKey
 } from '../../types';
 import { PropertyConfiguration, defaultPropertyConfig } from '../../types/configuration';
 
 import { subscribeToItems } from './firestoreService';
-import { collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, getCountFromServer } from 'firebase/firestore';
 import { db } from './firebase';
+import { tenantService } from './tenantService';
+import { seedDatabase } from './seeder';
+
+export const PROPERTY_CONFIG_UPDATED_EVENT = 'hs:property-config-updated';
 
 interface PmsState {
     rooms: Room[];
@@ -28,6 +32,7 @@ interface PmsState {
     posOrders: PosOrder[];
     assets: Asset[];
     maintenanceTasks: MaintenanceTask[];
+    maintenance?: MaintenanceTask[]; // Alias for maintenanceTasks
     menuItems: MenuItem[];
     candidates: Candidate[];
     trainingModules: TrainingModule[];
@@ -55,6 +60,12 @@ interface PmsState {
     ledgerEntries: LedgerEntry[];
     brandDocuments: BrandDocument[];
     brandChanges: BrandChange[];
+    guestKeys: GuestKey[];
+    compsetSnapshots: CompsetSnapshot[];
+    demandEvents: DemandEvent[];
+    rateRecommendations: RateRecommendation[];
+    ratePushLogs: RatePushLog[];
+    losRestrictions: LosRestriction[];
     clearData: () => void;
 
     loading: boolean;
@@ -101,6 +112,12 @@ const initialState: PmsState = {
     ledgerEntries: [],
     brandDocuments: [],
     brandChanges: [],
+    guestKeys: [],
+    compsetSnapshots: [],
+    demandEvents: [],
+    rateRecommendations: [],
+    ratePushLogs: [],
+    losRestrictions: [],
     clearData: () => { },
     loading: true,
     seeding: false,
@@ -113,35 +130,51 @@ export const usePms = () => useContext(PmsContext);
 
 export const PmsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [store, setStore] = useState<PmsState>(initialState);
+    const unsubscribersRef = useRef<(() => void)[]>([]);
 
     useEffect(() => {
-        // Unsubscribe functions
-        const unsubscribers: (() => void)[] = [];
-
         const init = async () => {
             try {
-                // Check if seeded (Rooms OR Inventory missing) - Simple check to trigger seeding
-                // Check if seeded (Rooms OR Inventory missing) - Simple check to trigger seeding
-                /* 
-                const roomsColl = collection(db, 'rooms');
-                const pmsSnap = await getCountFromServer(roomsColl);
+                const activePropertyId = tenantService.getActivePropertyId();
+                console.log(`[PMS] Bootstrapping tenant scope: ${activePropertyId}`);
 
-                if (pmsSnap.data().count === 0) {
-                    console.log("Database empty. Seeding...");
-                    setStore(s => ({ ...s, seeding: true }));
-                    await seedDatabase();
-                    setStore(s => ({ ...s, seeding: false }));
-                    console.log("Seeding complete.");
-                } else {
-                    console.log("Database already seeded.");
+                // ── Demo-only auto-seeding ────────────────────────────────
+                // Only seed when the active property is a demo property
+                // (identified by the 'demo_property_' prefix). Real enrolled
+                // hotels start empty and are populated exclusively by user
+                // input or AI-assisted data entry — never auto-seeded.
+                const isDemoProperty = activePropertyId.startsWith('demo_property_');
+                if (isDemoProperty) {
+                    try {
+                        const roomsColl = collection(db, `properties/${activePropertyId}/rooms`);
+                        const countSnap = await getCountFromServer(roomsColl);
+                        if (countSnap.data().count === 0) {
+                            console.log('[PMS] Demo property is empty — seeding demo data…');
+                            setStore(s => ({ ...s, seeding: true }));
+                            await seedDatabase();
+                            setStore(s => ({ ...s, seeding: false }));
+                            console.log('[PMS] Demo seeding complete.');
+                        } else {
+                            console.log('[PMS] Demo property already seeded — skipping.');
+                        }
+                    } catch (seedErr) {
+                        console.warn('[PMS] Demo seeding check failed (non-fatal):', seedErr);
+                        setStore(s => ({ ...s, seeding: false }));
+                    }
                 }
-                */
                 // Helper to add subscription
-                const sub = <T>(collectionName: string, key: keyof PmsState) => {
+                const sub = <T>(collectionName: string, key: keyof PmsState, strict = true) => {
                     const unsub = subscribeToItems<T>(collectionName, (items) => {
                         setStore(s => ({ ...s, [key]: items }));
+                    }, (error) => {
+                        console.error(`[PMS] Subscription failed for ${collectionName}:`, error);
+                        if (!strict) return;
+                        setStore(s => ({
+                            ...s,
+                            error: `Data source unavailable for "${collectionName}". Check auth/permissions.`
+                        }));
                     });
-                    unsubscribers.push(unsub);
+                    unsubscribersRef.current.push(unsub);
                 };
 
                 // Subscribe to Core PMS
@@ -184,6 +217,12 @@ export const PmsProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 sub<LedgerEntry>('ledgerEntries', 'ledgerEntries');
                 sub<BrandDocument>('brand_documents', 'brandDocuments');
                 sub<BrandChange>('brand_changes', 'brandChanges');
+                sub<GuestKey>('guest_keys', 'guestKeys', false);
+                sub<CompsetSnapshot>('compset_snapshots', 'compsetSnapshots', false);
+                sub<DemandEvent>('demand_events', 'demandEvents', false);
+                sub<RateRecommendation>('rate_recommendations', 'rateRecommendations', false);
+                sub<RatePushLog>('rate_push_log', 'ratePushLogs', false);
+                sub<LosRestriction>('los_restrictions', 'losRestrictions', false);
 
                 setStore(s => ({ ...s, loading: false }));
 
@@ -196,11 +235,16 @@ export const PmsProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         init();
 
         return () => {
-            unsubscribers.forEach(u => u());
+            unsubscribersRef.current.forEach(u => u());
+            unsubscribersRef.current = [];
         };
     }, []);
 
     const clearData = async () => {
+        if (import.meta.env.PROD) {
+            console.warn('[PMS] clearData() is disabled in production');
+            return;
+        }
         try {
             console.log("Starting Hard Wipe...");
             const collections = [
@@ -210,11 +254,15 @@ export const PmsProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 'payroll', 'suppliers', 'glAccounts', 'purchaseOrders', 'procurementRequests',
                 'rfqs', 'invoices', 'cashierDrops', 'recipes', 'recipeDrafts',
                 'incidents', 'tasks', 'visitors', 'yieldRules', 'businessBlocks', 'ledgerEntries',
-                'brand_documents', 'brand_changes'
+                'brand_documents', 'brand_changes', 'guest_keys', 'guest_key_events',
+                'ota_events', 'ota_reservations', 'payment_intents', 'payment_refunds', 'room_service_orders',
+                'gds_events', 'gds_reservations', 'guest_messages', 'api_clients', 'api_webhooks',
+                'loyalty_ledger', 'reviews', 'review_responses', 'review_stats', 'review_channels', 'post_stay_surveys',
+                'compset_snapshots', 'demand_events', 'rate_recommendations', 'rate_push_log', 'los_restrictions'
             ];
 
             for (const colName of collections) {
-                const colRef = collection(db, colName);
+                const colRef = collection(db, `properties/${tenantService.getActivePropertyId()}/${colName}`);
                 const snapshot = await getDocs(colRef);
                 const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
                 await Promise.all(deletePromises);
@@ -237,6 +285,7 @@ export const PmsProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 export const savePropertyConfig = (config: PropertyConfiguration): void => {
     try {
         localStorage.setItem('property_config', JSON.stringify(config));
+        window.dispatchEvent(new CustomEvent<PropertyConfiguration>(PROPERTY_CONFIG_UPDATED_EVENT, { detail: config }));
     } catch (error) {
         console.error('Failed to save property config:', error);
     }

@@ -1,6 +1,8 @@
 import React, { useState, Suspense } from 'react';
-import { User, RoleType } from './types';
+import { User } from './types';
 import { CURRENT_PROPERTY } from './services/kernel/config';
+import { getPropertyConfig, PROPERTY_CONFIG_UPDATED_EVENT } from './services/kernel/persistence';
+import { tenantService } from './services/kernel/tenantService';
 import { Command, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { migrateInitialOTAChannels } from './services/migrations/seedOTAChannels';
 import { agentService } from './services/intelligence/agentService';
@@ -10,6 +12,53 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme, AppTheme } from './context/ThemeContext';
 import { AppearanceProvider } from './src/context/AppearanceContext';
 import InspectorShell from './components/shared/InspectorShell';
+import BrandColorsSync from './BrandColorsSync';
+import WebsiteLanding from './components/WebsiteLanding';
+import ThemeGallery from './components/ThemeGallery';
+
+type AppScopeState = { hasError: boolean; message: string };
+type AppScopeProps = { children: React.ReactNode; appName: string };
+
+class AppScopeErrorBoundary extends React.Component<AppScopeProps, AppScopeState> {
+  state: AppScopeState = { hasError: false, message: '' };
+  declare props: Readonly<AppScopeProps>;
+  declare setState: React.Component<AppScopeProps, AppScopeState>['setState'];
+
+  static getDerivedStateFromError(error: Error): AppScopeState {
+    return { hasError: true, message: error?.message || 'Unknown error' };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    const props = this.props as AppScopeProps;
+    console.error(`[${props.appName}ErrorBoundary] Crash:`, error, info?.componentStack);
+  }
+
+  render() {
+    const state = this.state as AppScopeState;
+    const props = this.props as AppScopeProps;
+
+    if (state.hasError) {
+      return (
+        <div className="min-h-screen bg-black text-zinc-100 flex items-center justify-center p-6">
+          <div className="max-w-lg w-full bg-zinc-900/80 border border-rose-500/30 rounded-2xl p-6 text-center">
+            <h2 className="text-rose-400 font-semibold text-base mb-2">{props.appName} encountered an error</h2>
+            <pre className="text-xs bg-black/60 border border-zinc-800 rounded-lg p-3 text-rose-300 text-left overflow-auto mb-4">
+              {state.message}
+            </pre>
+            <button
+              onClick={() => this.setState({ hasError: false, message: '' })}
+              className="px-4 py-2 bg-violet-600 text-white rounded-xl text-sm hover:bg-violet-500 transition"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return props.children;
+  }
+}
 
 class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; message: string }> {
   constructor(props: { children: React.ReactNode }) {
@@ -44,11 +93,8 @@ class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, {
   }
 }
 
-// Lazy Load Apps
 const GuestApp = React.lazy(() => import('./components/GuestApp'));
 const OpsApp = React.lazy(() => import('./components/OpsApp'));
-
-// ─── Loading Spinner ──────────────────────────────────────────────────────────
 
 const LoadingScreen = () => (
   <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
@@ -56,11 +102,10 @@ const LoadingScreen = () => (
   </div>
 );
 
-// ─── Debug Overlay (Dev Only) ─────────────────────────────────────────────────
-
 const DebugOverlay = () => {
   const { rooms, loading, seeding, error, clearData } = usePms();
-  if (process.env.NODE_ENV === 'production') return null;
+  if (import.meta.env.PROD) return null;
+
   return (
     <div className="fixed bottom-4 left-4 z-[9999] bg-black/80 text-white p-4 rounded-lg text-xs font-mono pointer-events-none">
       <div>Status: {loading ? 'Loading...' : 'Ready'}</div>
@@ -68,7 +113,9 @@ const DebugOverlay = () => {
       <div>Rooms: {rooms.length}</div>
       {error && <div className="text-red-500 font-bold">Error: {error}</div>}
       <button
-        onClick={() => { if (confirm('Clear all local data?')) clearData(); }}
+        onClick={() => {
+          if (confirm('Clear all local data?')) clearData();
+        }}
         className="mt-2 bg-red-900/50 hover:bg-red-800 text-red-200 px-2 py-1 rounded w-full border border-red-800 pointer-events-auto"
       >
         Wipe Data
@@ -76,8 +123,6 @@ const DebugOverlay = () => {
     </div>
   );
 };
-
-// ─── Login Screen ─────────────────────────────────────────────────────────────
 
 const LoginScreen: React.FC = () => {
   const { login, loginError, loading } = useAuth();
@@ -99,20 +144,17 @@ const LoginScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden p-6 font-sans">
-
-      {/* Dynamic Animated Cosmic Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-900/40 rounded-full mix-blend-screen filter blur-[150px] animate-pulse pointer-events-none" style={{ animationDuration: '8s' }} />
         <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-900/30 rounded-full mix-blend-screen filter blur-[120px] animate-pulse pointer-events-none" style={{ animationDuration: '12s', animationDelay: '2s' }} />
         <div className="absolute top-[40%] left-[20%] w-[50vw] h-[50vw] bg-blue-900/20 rounded-full mix-blend-screen filter blur-[100px] animate-pulse pointer-events-none" style={{ animationDuration: '10s', animationDelay: '4s' }} />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay" />
       </div>
 
       <div className="z-10 text-center space-y-8 w-full max-w-md">
-        {/* Animated Logo Container */}
         <div className="flex flex-col items-center space-y-6">
           <div className="relative group">
-            <div className="absolute inset-0 bg-violet-500 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-700"></div>
+            <div className="absolute inset-0 bg-violet-500 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-700" />
             <div className="relative p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-3xl shadow-2xl flex items-center justify-center animate-pulse" style={{ animationDuration: '4s' }}>
               <Command className="w-16 h-16 text-white drop-shadow-[0_0_15px_rgba(139,92,246,0.5)]" />
             </div>
@@ -122,18 +164,15 @@ const LoginScreen: React.FC = () => {
               SINGULARITY
             </h1>
             <p className="text-violet-300 text-[10px] md:text-xs tracking-[0.4em] uppercase font-bold mt-3 opacity-80 flex items-center justify-center gap-2">
-              <span className="w-8 h-px bg-violet-500/50"></span>
+              <span className="w-8 h-px bg-violet-500/50" />
               Operating System v2.0
-              <span className="w-8 h-px bg-violet-500/50"></span>
+              <span className="w-8 h-px bg-violet-500/50" />
             </p>
           </div>
         </div>
 
-        {/* Premium Glassmorphic Login Card */}
         <div className="relative bg-black/40 border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl backdrop-blur-2xl w-full overflow-hidden group">
-
-          {/* Subtle inner card glow effect on hover */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
 
           <h2 className="text-zinc-400 mb-8 font-medium text-[11px] uppercase tracking-[0.3em] flex items-center justify-center gap-2">
             <ShieldCheck className="w-4 h-4 text-violet-400" />
@@ -146,14 +185,14 @@ const LoginScreen: React.FC = () => {
                 Employee ID
               </label>
               <div className="relative">
-                <div className="absolute inset-0 bg-violet-500/20 rounded-xl blur-lg opacity-0 group-focus-within/input:opacity-100 transition duration-500"></div>
+                <div className="absolute inset-0 bg-violet-500/20 rounded-xl blur-lg opacity-0 group-focus-within/input:opacity-100 transition duration-500" />
                 <input
                   id="employee-id-input"
                   type="text"
                   placeholder="e.g. EMP_001 or your email"
                   value={employeeId}
                   autoComplete="username"
-                  onChange={e => setEmployeeId(e.target.value)}
+                  onChange={(e) => setEmployeeId(e.target.value)}
                   onKeyDown={handleKeyDown}
                   className="relative w-full bg-black/60 border border-zinc-800 rounded-xl p-4 text-sm text-white placeholder-zinc-700 focus:outline-none focus:border-violet-500/50 focus:bg-zinc-900/80 transition-all duration-300"
                 />
@@ -165,20 +204,20 @@ const LoginScreen: React.FC = () => {
                 Access PIN
               </label>
               <div className="relative">
-                <div className="absolute inset-0 bg-violet-500/20 rounded-xl blur-lg opacity-0 group-focus-within/input:opacity-100 transition duration-500"></div>
+                <div className="absolute inset-0 bg-violet-500/20 rounded-xl blur-lg opacity-0 group-focus-within/input:opacity-100 transition duration-500" />
                 <input
                   id="pin-input"
                   type={showPin ? 'text' : 'password'}
                   placeholder="••••••"
                   value={pin}
                   autoComplete="current-password"
-                  onChange={e => setPin(e.target.value)}
+                  onChange={(e) => setPin(e.target.value)}
                   onKeyDown={handleKeyDown}
                   className="relative w-full bg-black/60 border border-zinc-800 rounded-xl p-4 pr-12 text-sm text-white placeholder-zinc-700 focus:outline-none focus:border-violet-500/50 focus:bg-zinc-900/80 transition-all duration-300 tracking-widest"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPin(s => !s)}
+                  onClick={() => setShowPin((s) => !s)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-white transition-colors duration-300 z-10"
                 >
                   {showPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -187,10 +226,9 @@ const LoginScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Error Message */}
           {loginError && (
             <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-medium animate-pulse backdrop-blur-md flex items-center justify-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
               {loginError}
             </div>
           )}
@@ -201,9 +239,8 @@ const LoginScreen: React.FC = () => {
             disabled={submitting || loading}
             className="relative w-full group/btn overflow-hidden rounded-xl"
           >
-            {/* Button Background & Hover Effects */}
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-transform duration-500 group-hover/btn:scale-105"></div>
-            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-transform duration-500 group-hover/btn:scale-105" />
+            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300" />
 
             <div className="relative w-full flex justify-center items-center py-4 px-6 text-white font-bold tracking-wide transition-all shadow-lg shadow-violet-900/40">
               {submitting ? (
@@ -232,6 +269,7 @@ const LoginScreen: React.FC = () => {
 
 const ThemeSwitcher: React.FC<{ isGuest: boolean }> = ({ isGuest }) => {
   const { theme, setTheme } = useTheme();
+
   return (
     <div className={`${isGuest ? 'fixed top-4 left-4 md:top-6 md:left-6' : 'fixed bottom-4 right-4 md:bottom-6 md:right-6'} z-[70]`}>
       <div className="bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-xl px-3 py-2 flex items-center gap-2 shadow-xl">
@@ -255,21 +293,47 @@ const ThemeSwitcher: React.FC<{ isGuest: boolean }> = ({ isGuest }) => {
   );
 };
 
-// ─── Main App Shell ───────────────────────────────────────────────────────────
-
-const AppShell: React.FC = () => {
+const AppShell: React.FC<{ mode: 'guest' | 'app' }> = ({ mode }) => {
   const { currentUser, loading, logout } = useAuth();
+  const [propertyConfigVersion, setPropertyConfigVersion] = React.useState(0);
 
-  // Run one-time migrations and AI self-healing repairs on boot
   React.useEffect(() => {
     migrateInitialOTAChannels();
     agentService.seedDefaults();
   }, []);
 
+  React.useEffect(() => {
+    const handler = () => setPropertyConfigVersion((value) => value + 1);
+    window.addEventListener(PROPERTY_CONFIG_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(PROPERTY_CONFIG_UPDATED_EVENT, handler);
+  }, []);
+
+  const isGuest = currentUser?.role === 'Guest';
+
+  React.useEffect(() => {
+    if (!currentUser) return;
+    if (mode === 'guest' && !isGuest) {
+      window.location.replace('/app');
+    } else if (mode === 'app' && isGuest) {
+      window.location.replace('/guest');
+    }
+  }, [mode, isGuest, currentUser]);
+
+  const resolvedProperty = React.useMemo(() => {
+    try {
+      const propertyId = tenantService.getActivePropertyId();
+      const propertyConfig = getPropertyConfig();
+      const displayName = propertyConfig?.name?.trim() || CURRENT_PROPERTY.name;
+      return { ...CURRENT_PROPERTY, id: propertyId, name: displayName };
+    } catch {
+      const propertyConfig = getPropertyConfig();
+      return { ...CURRENT_PROPERTY, name: propertyConfig?.name?.trim() || CURRENT_PROPERTY.name };
+    }
+  }, [currentUser?.hotelId, propertyConfigVersion]);
+
   if (loading) return <LoadingScreen />;
   if (!currentUser) return <LoginScreen />;
 
-  // Convert internal session to User-compatible object for existing components
   const userAsLegacy: User = {
     principal: currentUser.userId,
     role: currentUser.role,
@@ -279,7 +343,9 @@ const AppShell: React.FC = () => {
     valenceHistory: [],
   };
 
-  const isGuest = currentUser.role === 'Guest';
+  if ((mode === 'guest' && !isGuest) || (mode === 'app' && isGuest)) {
+    return <LoadingScreen />;
+  }
 
   return (
     <PmsProvider>
@@ -288,17 +354,20 @@ const AppShell: React.FC = () => {
         <div className="flex flex-col min-h-screen app-container overflow-x-hidden">
           <div className="flex-1 w-full relative h-full flex min-w-0 overflow-hidden">
             {isGuest ? (
-              <Suspense fallback={<LoadingScreen />}>
-                <GuestApp user={userAsLegacy} room={undefined} reservation={undefined} />
-              </Suspense>
+              <AppScopeErrorBoundary appName="Guest App">
+                <Suspense fallback={<LoadingScreen />}>
+                  <GuestApp user={userAsLegacy} room={undefined} reservation={undefined} />
+                </Suspense>
+              </AppScopeErrorBoundary>
             ) : (
-              <Suspense fallback={<LoadingScreen />}>
-                <OpsApp user={userAsLegacy} property={CURRENT_PROPERTY} />
-              </Suspense>
+              <AppScopeErrorBoundary appName="Property OS">
+                <Suspense fallback={<LoadingScreen />}>
+                  <OpsApp user={userAsLegacy} property={resolvedProperty} />
+                </Suspense>
+              </AppScopeErrorBoundary>
             )}
           </div>
 
-          {/* Sign Out */}
           {isGuest && (
             <button
               id="sign-out-button"
@@ -316,18 +385,44 @@ const AppShell: React.FC = () => {
   );
 };
 
-// ─── Root ─────────────────────────────────────────────────────────────────────
+const App: React.FC = () => {
+  const path = typeof window !== 'undefined' ? window.location.pathname.replace(/\/$/, '') || '/' : '/';
 
-const App: React.FC = () => (
-  <RootErrorBoundary>
-    <AppearanceProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <AppShell />
-        </AuthProvider>
-      </ThemeProvider>
-    </AppearanceProvider>
-  </RootErrorBoundary>
-);
+  React.useEffect(() => {
+    if (path.startsWith('/website')) {
+      window.location.replace('/');
+    } else if (path === '/operation' || path === '/ops') {
+      window.location.replace('/app');
+    }
+  }, [path]);
+
+  const isWebsiteRoute = path === '/';
+  const isThemeGalleryRoute = path === '/theme-gallery' || path.startsWith('/theme-gallery/') || path === '/themes' || path.startsWith('/themes/');
+  const isGuestRoute = path === '/guest' || path.startsWith('/guest/');
+  const isAppRoute = path === '/app' || path.startsWith('/app/');
+  const appMode: 'guest' | 'app' = isGuestRoute ? 'guest' : 'app';
+
+  return (
+    <RootErrorBoundary>
+      <BrandColorsSync />
+      {isWebsiteRoute ? (
+        <WebsiteLanding />
+      ) : isThemeGalleryRoute ? (
+        <ThemeGallery />
+      ) : isGuestRoute || isAppRoute ? (
+        <AppearanceProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <AppShell mode={appMode} />
+            </AuthProvider>
+          </ThemeProvider>
+        </AppearanceProvider>
+      ) : (() => {
+        if (typeof window !== 'undefined') window.location.replace('/');
+        return <LoadingScreen />;
+      })()}
+    </RootErrorBoundary>
+  );
+};
 
 export default App;

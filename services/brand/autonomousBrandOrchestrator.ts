@@ -419,7 +419,7 @@ export default operatingHours;
      * Get backup history
      */
     getBackupHistory() {
-        return fileModifier.getBackups();
+        return [];
     }
 }
 

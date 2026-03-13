@@ -1,0 +1,439 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
+
+.ws-root {
+  min-height: 100vh;
+  color: #e8ecf4;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(45, 100, 255, 0.18) 0%, transparent 30%),
+    radial-gradient(circle at 88% 28%, rgba(0, 198, 164, 0.14) 0%, transparent 24%),
+    linear-gradient(180deg, #09121d 0%, #0f1722 46%, #0c131d 100%);
+  font-family: 'Manrope', sans-serif;
+}
+
+.ws-root * {
+  box-sizing: border-box;
+}
+
+.ws-shell {
+  width: min(1220px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+.ws-utility-bar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(3, 10, 20, 0.72);
+}
+
+.ws-utility-inner {
+  min-height: 2.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.7rem;
+  color: rgba(232, 236, 244, 0.72);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ws-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  backdrop-filter: blur(18px);
+  background: rgba(9, 18, 29, 0.84);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ws-nav {
+  min-height: 4.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ws-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #f8fafc;
+  text-decoration: none;
+}
+
+.ws-brand-mark {
+  width: 2.55rem;
+  height: 2.55rem;
+  border-radius: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #315efb 0%, #00b89b 100%);
+  font-weight: 800;
+}
+
+.ws-brand strong,
+.ws-brand small {
+  display: block;
+}
+
+.ws-brand small {
+  color: rgba(232, 236, 244, 0.62);
+  font-size: 0.72rem;
+}
+
+.ws-links,
+.ws-nav-actions,
+.ws-hero-actions,
+.ws-cta-actions,
+.ws-hero-proof {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ws-links a {
+  color: rgba(232, 236, 244, 0.8);
+  text-decoration: none;
+  font-size: 0.86rem;
+}
+
+.ws-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.85rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #ffffff;
+  background: linear-gradient(120deg, #315efb 0%, #00b89b 100%);
+  box-shadow: 0 18px 34px -22px rgba(49, 94, 251, 0.9);
+}
+
+.ws-btn-ghost {
+  background: rgba(255, 255, 255, 0.05);
+  color: #eef3fb;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+.ws-hero {
+  padding: 4.4rem 0 3rem;
+}
+
+.ws-hero-grid,
+.ws-trust-grid,
+.ws-cta-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 1.5rem;
+}
+
+.ws-kicker {
+  margin: 0;
+  color: #7edcff;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.ws-hero h1,
+.ws-section h2,
+.ws-cta h2 {
+  margin: 0.7rem 0 0;
+  font-family: 'Fraunces', serif;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.ws-hero h1 {
+  font-size: clamp(2.8rem, 5vw, 5.4rem);
+  max-width: 12ch;
+}
+
+.ws-lead,
+.ws-section-copy {
+  margin: 1rem 0 0;
+  color: rgba(232, 236, 244, 0.74);
+  line-height: 1.75;
+  font-size: 1rem;
+}
+
+.ws-hero-actions {
+  margin-top: 1.6rem;
+  flex-wrap: wrap;
+}
+
+.ws-hero-proof {
+  margin-top: 1.4rem;
+  flex-wrap: wrap;
+  color: rgba(232, 236, 244, 0.82);
+  font-size: 0.84rem;
+}
+
+.ws-hero-proof span,
+.ws-audience-card li,
+.ws-pricing-card li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ws-hero-panel,
+.ws-card,
+.ws-audience-card,
+.ws-pricing-card,
+.ws-trust-card,
+.ws-cta-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 28px 42px -34px rgba(0, 0, 0, 0.8);
+}
+
+.ws-hero-panel {
+  padding: 1rem;
+  backdrop-filter: blur(18px);
+}
+
+.ws-panel-top,
+.ws-stat-grid,
+.ws-pillars,
+.ws-audiences,
+.ws-pricing-grid,
+.ws-trust-cards {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.ws-panel-top {
+  grid-template-columns: repeat(2, max-content);
+}
+
+.ws-panel-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.9rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(232, 236, 244, 0.78);
+}
+
+.ws-panel-chip.is-live {
+  color: #65f0cd;
+}
+
+.ws-priority-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.ws-priority-card {
+  display: grid;
+  grid-template-columns: 1.2rem 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  text-align: left;
+  padding: 0.95rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(12, 18, 30, 0.85);
+  color: #eef3fb;
+}
+
+.ws-priority-card.is-active {
+  border-color: rgba(49, 94, 251, 0.48);
+  background: linear-gradient(180deg, rgba(49, 94, 251, 0.18) 0%, rgba(12, 18, 30, 0.94) 100%);
+}
+
+.ws-priority-card strong,
+.ws-stat-grid strong,
+.ws-card h3,
+.ws-audience-card h3,
+.ws-trust-card strong,
+.ws-plan-price strong {
+  display: block;
+}
+
+.ws-priority-card span,
+.ws-stat-grid span,
+.ws-card p,
+.ws-audience-card p,
+.ws-plan-note,
+.ws-trust-card span {
+  color: rgba(232, 236, 244, 0.68);
+  line-height: 1.6;
+}
+
+.ws-stat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0.9rem;
+}
+
+.ws-stat-grid div,
+.ws-card,
+.ws-audience-card,
+.ws-pricing-card,
+.ws-trust-card {
+  padding: 1rem;
+}
+
+.ws-section {
+  padding: 1.4rem 0 3.25rem;
+}
+
+.ws-section-alt {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ws-section-head {
+  margin-bottom: 1.3rem;
+}
+
+.ws-section h2,
+.ws-cta h2 {
+  font-size: clamp(2rem, 3.5vw, 3.3rem);
+}
+
+.ws-pillars,
+.ws-pricing-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ws-card-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(49, 94, 251, 0.16);
+  color: #80a1ff;
+}
+
+.ws-audiences,
+.ws-trust-cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ws-audience-card ul,
+.ws-pricing-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.ws-pricing-card.is-featured {
+  border-color: rgba(49, 94, 251, 0.44);
+  background: linear-gradient(180deg, rgba(49, 94, 251, 0.18) 0%, rgba(255, 255, 255, 0.05) 100%);
+}
+
+.ws-plan-tier {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #8edcff;
+  font-weight: 800;
+}
+
+.ws-plan-price {
+  margin-top: 0.75rem;
+}
+
+.ws-plan-price strong {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.ws-plan-price span {
+  display: block;
+  margin-top: 0.35rem;
+  color: rgba(232, 236, 244, 0.72);
+}
+
+.ws-trust-grid {
+  align-items: start;
+}
+
+.ws-trust-card {
+  display: grid;
+  grid-template-columns: 1.2rem 1fr;
+  gap: 0.75rem;
+}
+
+.ws-cta {
+  padding: 0 0 4rem;
+}
+
+.ws-cta-card {
+  padding: 1.4rem;
+  align-items: center;
+}
+
+@media (max-width: 1080px) {
+  .ws-hero-grid,
+  .ws-trust-grid,
+  .ws-cta-card,
+  .ws-pillars,
+  .ws-pricing-grid,
+  .ws-audiences {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ws-hero-grid,
+  .ws-trust-grid,
+  .ws-cta-card {
+    grid-template-columns: 1fr;
+  }
+
+  .ws-links {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .ws-shell {
+    width: min(100%, calc(100% - 1rem));
+  }
+
+  .ws-utility-inner,
+  .ws-nav,
+  .ws-nav-actions,
+  .ws-hero-actions,
+  .ws-hero-proof,
+  .ws-cta-actions,
+  .ws-stat-grid,
+  .ws-pillars,
+  .ws-pricing-grid,
+  .ws-audiences,
+  .ws-trust-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .ws-nav,
+  .ws-nav-actions,
+  .ws-hero-actions,
+  .ws-hero-proof,
+  .ws-cta-actions {
+    display: grid;
+    align-items: stretch;
+  }
+
+  .ws-utility-inner {
+    justify-content: center;
+    text-align: center;
+  }
+}

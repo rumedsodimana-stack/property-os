@@ -1,7 +1,7 @@
 import { format, addDays } from 'date-fns';
 import { db } from '../kernel/firebase';
+import { getCollectionRef } from '../kernel/firestoreService';
 import {
-    collection,
     query,
     where,
     getDocs,
@@ -11,8 +11,7 @@ import {
     setDoc,
     getDoc,
     limit,
-    orderBy,
-    Timestamp
+    orderBy
 } from 'firebase/firestore';
 
 const CHECKED_IN_STATUSES = ['Checked In', 'CHECKED_IN', 'checked_in'];
@@ -182,7 +181,7 @@ export class NightAuditService {
         // Check for open check-outs
         const bdString = this.config.businessDate.toISOString().split('T')[0];
         const qRes = query(
-            collection(db, 'reservations'),
+            getCollectionRef('reservations'),
             where('status', 'in', CHECKED_IN_STATUSES),
             where('checkOut', '<=', bdString)
         );
@@ -194,7 +193,7 @@ export class NightAuditService {
 
         // Check for unsettled folios
         const qFolio = query(
-            collection(db, 'folios'),
+            getCollectionRef('folios'),
             where('status', '==', 'Open'),
             where('balance', '>', 0)
         );
@@ -212,11 +211,11 @@ export class NightAuditService {
             folios: await this.getFolioSummary()
         };
 
-        await addDoc(collection(db, 'auditSnapshots'), snapshot);
+        await addDoc(getCollectionRef('auditSnapshots'), snapshot);
     }
 
     private async postRoomRevenue(): Promise<{ posted: number, amount: number }> {
-        const qRes = query(collection(db, 'reservations'), where('status', 'in', CHECKED_IN_STATUSES));
+        const qRes = query(getCollectionRef('reservations'), where('status', 'in', CHECKED_IN_STATUSES));
         const reservations = await getDocs(qRes);
 
         let posted = 0;
@@ -231,7 +230,7 @@ export class NightAuditService {
 
             if (dailyRate > 0 && reservation.folioId) {
                 // Fetch the folio to add charge
-                const folioRef = doc(db, 'folios', reservation.folioId);
+                const folioRef = doc(getCollectionRef('folios'), reservation.folioId);
                 const folioSnap = await getDoc(folioRef);
 
                 if (folioSnap.exists()) {
@@ -264,7 +263,7 @@ export class NightAuditService {
         const todayStr = this.config.businessDate.toISOString().split('T')[0];
 
         const qRes = query(
-            collection(db, 'reservations'),
+            getCollectionRef('reservations'),
             where('checkIn', '>=', todayStr),
             where('checkIn', '<=', todayStr + 'T23:59:59Z'),
             where('status', 'in', CONFIRMED_STATUSES)
@@ -299,7 +298,7 @@ export class NightAuditService {
 
     private async runTrialBalance(): Promise<TrialBalance> {
         // Query recent charges from all folios
-        const qFolio = query(collection(db, 'folios'));
+        const qFolio = query(getCollectionRef('folios'));
         const folios = await getDocs(qFolio);
 
         let totalDebits = 0;
@@ -338,7 +337,7 @@ export class NightAuditService {
 
     private async rolloverBusinessDate(): Promise<void> {
         const newBusinessDate = addDays(this.config.businessDate, 1);
-        await setDoc(doc(db, 'systemConfig', 'businessDate'), {
+        await setDoc(doc(getCollectionRef('systemConfig'), 'businessDate'), {
             date: newBusinessDate.toISOString(),
             updatedAt: new Date().toISOString(),
             updatedBy: 'night_audit_auto'
@@ -350,7 +349,7 @@ export class NightAuditService {
 
     private async updateStatistics(): Promise<DailyStatistics> {
         const stats = await this.calculateStatistics();
-        await addDoc(collection(db, 'dailyStatistics'), stats);
+        await addDoc(getCollectionRef('dailyStatistics'), stats);
         return stats;
     }
 
@@ -363,7 +362,7 @@ export class NightAuditService {
 
         // Get occupied rooms count based on active checked-in reservations
         const qRes = query(
-            collection(db, 'reservations'),
+            getCollectionRef('reservations'),
             where('status', 'in', CHECKED_IN_STATUSES)
         );
         const occupied = await getDocs(qRes);
@@ -375,7 +374,7 @@ export class NightAuditService {
         let fbRevenue = 0;
         let otherRevenue = 0;
 
-        const qFolio = query(collection(db, 'folios'));
+        const qFolio = query(getCollectionRef('folios'));
         const folios = await getDocs(qFolio);
 
         folios.forEach((docSnap: any) => {
@@ -421,8 +420,8 @@ export class NightAuditService {
 
     private async countReservations(): Promise<Record<string, number>> {
         const counts: Record<string, number> = {};
-        const confirmedSnapshot = await getDocs(query(collection(db, 'reservations'), where('status', 'in', CONFIRMED_STATUSES)));
-        const cancelledSnapshot = await getDocs(query(collection(db, 'reservations'), where('status', 'in', CANCELLED_STATUSES)));
+        const confirmedSnapshot = await getDocs(query(getCollectionRef('reservations'), where('status', 'in', CONFIRMED_STATUSES)));
+        const cancelledSnapshot = await getDocs(query(getCollectionRef('reservations'), where('status', 'in', CANCELLED_STATUSES)));
         counts.Confirmed = confirmedSnapshot.size;
         counts.Cancelled = cancelledSnapshot.size;
 
@@ -434,7 +433,7 @@ export class NightAuditService {
         const counts: Record<string, number> = {};
 
         for (const status of statuses) {
-            const q = query(collection(db, 'rooms'), where('status', '==', status));
+            const q = query(getCollectionRef('rooms'), where('status', '==', status));
             const snapshot = await getDocs(q);
             counts[status] = snapshot.size;
         }
@@ -443,7 +442,7 @@ export class NightAuditService {
     }
 
     private async getFolioSummary(): Promise<{ open: number, totalBalance: number }> {
-        const folios = await getDocs(query(collection(db, 'folios'), where('status', '==', 'Open')));
+        const folios = await getDocs(query(getCollectionRef('folios'), where('status', '==', 'Open')));
 
         let totalBalance = 0;
         folios.forEach((docSnap: any) => {
@@ -469,7 +468,7 @@ export class NightAuditService {
                 endTime: s.endTime?.toISOString()
             }))
         };
-        await setDoc(doc(db, 'auditRuns', auditRun.id), dataToSave);
+        await setDoc(doc(getCollectionRef('auditRuns'), auditRun.id), dataToSave);
     }
 
     private async sendNotification(notification: {
@@ -483,13 +482,13 @@ export class NightAuditService {
 
 // Helpers for fetching from frontend
 export const getAuditHistory = async (): Promise<any[]> => {
-    const q = query(collection(db, 'auditRuns'), orderBy('startTime', 'desc'), limit(10));
+    const q = query(getCollectionRef('auditRuns'), orderBy('startTime', 'desc'), limit(10));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => doc.data());
 }
 
 export const getLatestStatistics = async (): Promise<any> => {
-    const q = query(collection(db, 'dailyStatistics'), orderBy('businessDate', 'desc'), limit(1));
+    const q = query(getCollectionRef('dailyStatistics'), orderBy('businessDate', 'desc'), limit(1));
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
         return snapshot.docs[0].data();

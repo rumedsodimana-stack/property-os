@@ -26,5 +26,27 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "*.ts",
+    "*.tsx",
+    "components/**/*",
+    "context/**/*",
+    "hooks/**/*",
+    "services/**/*",
+    "types/**/*",
+    "config/**/*",
+    "utils/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".claude",
+    "mobile",
+    "Demo_200Rooms",
+    "functions",
+    "edgeNode",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }

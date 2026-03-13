@@ -2,184 +2,763 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ─── Auth Helpers ───────────────────────────────────────────────────────
+
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function roleFromClaim() {
+    function role() {
       return request.auth.token.role;
     }
 
-    function roleFromEmployeeDoc() {
-      return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role;
+    /** Operator signed in via issueOperatorSession custom token. */
+    function isInternalOperator() {
+      return isAuthenticated()
+        && request.auth.token.role != null
+        && request.auth.token.principal != null;
     }
 
-    function hasRole(role) {
-      return isAuthenticated() && (
-        roleFromClaim() == role ||
-        roleFromEmployeeDoc() == role
-      );
+    /** Anonymous demo sign-in (VITE_ENABLE_DEMO_USERS mode). */
+    function isAnonymousDemo() {
+      return isAuthenticated()
+        && request.auth.token.firebase != null
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
     }
 
-    function hasAnyRole(r1, r2, r3) {
-      return hasRole(r1) || hasRole(r2) || hasRole(r3);
+    // ─── Tenant Isolation ───────────────────────────────────────────────────
+
+    /**
+     * Core multi-tenancy guard.
+     * An operator can only access data that belongs to THEIR hotel (hotelId claim).
+     * Demo users (anonymous) may only access demo_property_* properties.
+     */
+    function ownsProperty(propertyId) {
+      return (isInternalOperator() && request.auth.token.hotelId == propertyId)
+          || (isAnonymousDemo()    && propertyId.matches('demo_property_.*'));
     }
+
+    // ─── Role Checks ────────────────────────────────────────────────────────
 
     function hasOpsLeadership() {
-      return hasAnyRole('GM', 'Manager', 'Supervisor');
+      return isAnonymousDemo()
+          || (isInternalOperator() && role() in ['GM', 'Manager', 'Supervisor']);
     }
 
-    function hasFinanceLeadership() {
-      return hasAnyRole('GM', 'Manager', 'Finance');
+    function hasOperationsRole() {
+      return isAnonymousDemo()
+          || (isInternalOperator() && role() in ['GM', 'Manager', 'Supervisor', 'FrontDesk', 'Staff', 'Chef']);
+    }
+
+    function hasFinanceRole() {
+      return isAnonymousDemo()
+          || (isInternalOperator() && role() in ['GM', 'Manager', 'Finance']);
+    }
+
+    function hasHRWriteRole() {
+      return isAnonymousDemo()
+          || (isInternalOperator() && role() in ['GM', 'Manager', 'Supervisor', 'Staff']);
+    }
+
+    function hasAIAdminRole() {
+      return isAnonymousDemo()
+          || (isInternalOperator() && role() in ['GM', 'Manager']);
+    }
+
+    function canReadInternal() {
+      return isAnonymousDemo() || isInternalOperator();
     }
 
     function canReadAudit() {
-      return hasOpsLeadership() || hasRole('Finance');
+      return isAnonymousDemo()
+          || (isInternalOperator() && role() in ['GM', 'Manager', 'Supervisor', 'Finance']);
     }
 
-    function canWriteOperations() {
-      return hasOpsLeadership() ||
-        hasAnyRole('FrontDesk', 'Chef', 'Finance') ||
-        hasRole('Staff');
+    function isPosKiosk() {
+      return isAuthenticated()
+          && request.auth.token.role in ['outlet_kiosk', 'pos_kiosk']
+          && request.auth.token.outletId != null;
     }
 
-    function canWriteFinance() {
-      return hasFinanceLeadership();
+    function outletMatches(docOutletId) {
+      return request.auth.token.outletId == docOutletId;
     }
 
-    function canWriteSecurity() {
-      return hasOpsLeadership();
+    // ─── Public Lead Intake ─────────────────────────────────────────────────
+
+    function validInquiryPayload() {
+      return request.resource.data.keys().hasAll([
+          'fullName', 'email', 'contactNumber', 'businessName', 'source', 'requestedAt'
+        ])
+        && request.resource.data.fullName is string
+        && request.resource.data.email is string
+        && request.resource.data.contactNumber is string
+        && request.resource.data.businessName is string
+        && request.resource.data.source == 'website_contact_form';
     }
 
-    // Default deny
-    match /{document=**} {
-      allow read, write: if false;
+    match /demo_inquiries/{id} {
+      allow create: if validInquiryPayload();
+      allow read, update, delete: if hasOpsLeadership();
     }
 
-    // Identity + auth sessions
-    match /employees/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || hasOpsLeadership());
-      allow write: if hasOpsLeadership();
-    }
+    // ─── Global / Cross-Tenant Collections ──────────────────────────────────
+    // These are intentionally NOT property-scoped; they live at the root level.
 
+    /** Enrolled GM records written during enrollment by the Cloud Function (admin SDK). */
     match /users/{uid} {
-      allow read: if isAuthenticated() && (request.auth.uid == uid || hasOpsLeadership());
-      allow write: if hasOpsLeadership();
+      // Any operator can read their own record; GMs and Managers can read all.
+      allow read:  if (isInternalOperator() && request.auth.uid == uid)
+                || hasOpsLeadership();
+      // Only allow self-updates; full write goes through Cloud Functions (admin SDK).
+      allow write: if false;
     }
 
     match /auth_sessions/{sessionId} {
-      allow read: if hasOpsLeadership() || request.auth.uid == resource.data.userId;
-      allow write: if false; // backend only
+      allow read:  if hasOpsLeadership()
+                || (isAuthenticated() && request.auth.uid == resource.data.userId);
+      allow write: if false; // Cloud Functions only
     }
 
-    // Core operations
-    match /reservations/{id} {
-      allow read: if isAuthenticated();
-      allow write: if canWriteOperations();
+    match /hotel_registry/{hotelId} {
+      allow read:  if canReadInternal();
+      allow write: if false; // Cloud Functions only
     }
 
-    match /rooms/{id} {
-      allow read: if isAuthenticated();
-      allow write: if canWriteOperations();
+    // ─── CORE: Property-Scoped Multi-Tenant Data ─────────────────────────────
+    //
+    //  ALL operational data lives under:
+    //    properties/{propertyId}/{collection}/{docId}
+    //
+    //  The ownsProperty() guard ensures cross-hotel access is impossible.
+
+    match /properties/{propertyId} {
+      // Root document (name, currency, timezone, etc.)
+      allow read:  if ownsProperty(propertyId) && canReadInternal();
+      allow write: if false; // Cloud Functions only (enrollment + setupWizard)
+
+      // ── PMS Core ────────────────────────────────────────────────────────
+
+      match /rooms/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /room_types/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      match /rate_plans/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      match /reservations/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /guests/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /folios/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /transactions/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole());
+      }
+
+      match /guest_keys/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      match /guest_key_events/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadAudit();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      // ── F&B / POS ────────────────────────────────────────────────────────
+
+      match /outlets/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /menuItems/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /tables/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /posOrders/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (
+            hasOperationsRole()
+            || (isPosKiosk() && (
+                  (request.resource.data.outletId != null && outletMatches(request.resource.data.outletId))
+                  || (resource.data.outletId != null && outletMatches(resource.data.outletId))
+               ))
+        );
+      }
+
+      match /recipes/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /recipeDrafts/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      // ── Housekeeping / Engineering ────────────────────────────────────────
+
+      match /tasks/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /maintenanceTasks/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /assets/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /incidents/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      // ── HR / Workforce ────────────────────────────────────────────────────
+
+      match /employees/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      match /shifts/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasHRWriteRole();
+      }
+
+      match /rosterShifts/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasHRWriteRole();
+      }
+
+      match /shiftPatterns/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasHRWriteRole();
+      }
+
+      match /payroll/{id} {
+        allow read:  if ownsProperty(propertyId) && hasFinanceRole();
+        allow write: if ownsProperty(propertyId) && hasFinanceRole();
+      }
+
+      match /leaveRequests/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasHRWriteRole();
+      }
+
+      match /attendanceLogs/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasHRWriteRole();
+      }
+
+      match /performanceReviews/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      match /candidates/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      match /trainingModules/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      match /systemRoles/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      // ── Finance ───────────────────────────────────────────────────────────
+
+      match /glAccounts/{id} {
+        allow read:  if ownsProperty(propertyId) && hasFinanceRole();
+        allow write: if ownsProperty(propertyId) && hasFinanceRole();
+      }
+
+      match /ledgerEntries/{id} {
+        allow read:  if ownsProperty(propertyId) && hasFinanceRole();
+        allow write: if ownsProperty(propertyId) && hasFinanceRole();
+      }
+
+      match /invoices/{id} {
+        allow read:  if ownsProperty(propertyId) && hasFinanceRole();
+        allow write: if ownsProperty(propertyId) && hasFinanceRole();
+      }
+
+      match /cashierDrops/{id} {
+        allow read:  if ownsProperty(propertyId) && hasFinanceRole();
+        allow write: if ownsProperty(propertyId) && hasFinanceRole();
+      }
+
+      // ── Procurement ───────────────────────────────────────────────────────
+
+      match /suppliers/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /purchaseOrders/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /procurementRequests/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /rfqs/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /master_inventory/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      // ── Events & Group ────────────────────────────────────────────────────
+
+      match /events/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /businessBlocks/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOperationsRole();
+      }
+
+      match /visitors/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      // ── Revenue Management ────────────────────────────────────────────────
+
+      match /yieldRules/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasAIAdminRole();
+      }
+
+      match /rateRecommendations/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if false; // Cloud Functions only
+      }
+
+      match /compsetSnapshots/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if false; // Cloud Functions only
+      }
+
+      match /losRestrictions/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      // ── OTA / Channel Manager ─────────────────────────────────────────────
+
+      match /ota_connections/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      // ── AI / Workflows ────────────────────────────────────────────────────
+
+      match /ai_agents/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasAIAdminRole();
+      }
+
+      match /workflows/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasAIAdminRole();
+      }
+
+      // ── Brand ─────────────────────────────────────────────────────────────
+
+      match /brand_documents/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      match /brand_changes/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      // ── Audit / Telemetry ─────────────────────────────────────────────────
+
+      match /audit_log/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadAudit();
+        allow write: if false; // Cloud Functions only
+      }
+
+      match /activity/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadAudit();
+        allow write: if false; // Cloud Functions only
+      }
+
+      match /dailyStatistics/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && hasOpsLeadership();
+      }
+
+      // ── Hotel Config (sub-docs under properties/) ─────────────────────────
+
+      match /settings/{settingId} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if false; // Cloud Functions only (completeHotelSetup)
+      }
+
+      // ── Legacy / snake_case compatibility collections ─────────────────────
+      // Explicitly listed so audit tooling can verify rules coverage.
+
+      match /auditRuns/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /auditSnapshots/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /cabana_bookings/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /certifications/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /class_bookings/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /class_schedules/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /compset_snapshots/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /crm_campaigns/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /crm_companies/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /crm_contacts/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /crm_interactions/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /crm_profiles/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /crm_segments/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /crm_tasks/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /demand_events/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /dining_reservations/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /equipment_rentals/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /groupBlocks/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /guestMessages/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /gym_membership_plans/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /gym_memberships/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /hardware_devices/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /integrationCredentials/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /job_descriptions/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /jobPostings/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /los_restrictions/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /menu_items/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /messages/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /okrKeyResults/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /okrObjectives/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /pay_grades/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /pulseSurveys/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /rate_push_log/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /rate_recommendations/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /rec_charges/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /rec_inventory/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /recipe_versions/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /recognitions/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /recruitmentCandidates/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /role_permissions/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /roomCategories/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /spa_reservations/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /surveyResponses/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /syncJobs/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /systemConfig/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /test_batches/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /traces/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /trainingAssignments/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /trainingCourses/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /workflowConfig/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      match /yield_rules/{id} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId) && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
+
+      // ── Catch-all for any future property subcollections ──────────────────
+      match /{subcollection}/{docId} {
+        allow read:  if ownsProperty(propertyId) && canReadInternal();
+        allow write: if ownsProperty(propertyId)
+                   && (hasOperationsRole() || hasFinanceRole() || hasOpsLeadership());
+      }
     }
 
-    match /folios/{id} {
-      allow read: if isAuthenticated();
-      allow write: if canWriteOperations();
+    // ─── hotels/ (admin/Cloud Function writes — no client read needed) ───────
+    match /hotels/{hotelId}/{document=**} {
+      allow read:  if false; // backend-only via admin SDK
+      allow write: if false; // backend-only via admin SDK
     }
 
-    // Standardized POS naming for app writes
-    match /posOrders/{id} {
-      allow read: if isAuthenticated();
-      allow write: if canWriteOperations();
+    // ─── Legacy top-level collections (kept for backward compat) ────────────
+    // These are no longer the primary path but may still receive writes from
+    // older Cloud Functions. Scoped to authenticated operators only.
+
+    match /employees/{uid} {
+      allow read:  if canReadInternal();
+      allow write: if hasOpsLeadership();
     }
 
-    // Legacy compatibility (server-side integrations)
-    match /pos_orders/{id} {
-      allow read: if isAuthenticated();
-      allow write: if canWriteOperations();
+    match /access_requests/{id} {
+      allow create: if isAuthenticated();
+      allow read:   if hasOpsLeadership() || (isAuthenticated() && request.auth.uid == resource.data.userId);
+      allow update, delete: if hasOpsLeadership();
     }
 
-    match /pos_outbox/{id} {
-      allow read: if isAuthenticated();
-      allow write: if canWriteOperations();
-    }
-
-    // Integrations + payments + audit (backend writes only where sensitive)
-    match /ota_connections_v2/{id} {
-      allow read: if isAuthenticated();
+    match /system_config/{docId} {
+      allow read:  if canReadInternal();
       allow write: if hasOpsLeadership();
     }
 
     match /integration_events/{id} {
-      allow read: if canReadAudit();
+      allow read:  if canReadAudit();
       allow write: if false;
     }
 
     match /sync_jobs/{id} {
-      allow read: if hasOpsLeadership();
-      allow write: if false;
-    }
-
-    match /sync_failures/{id} {
-      allow read: if hasOpsLeadership();
-      allow write: if false;
-    }
-
-    match /booking_intents/{id} {
-      allow read: if canWriteOperations();
+      allow read:  if hasOpsLeadership();
       allow write: if false;
     }
 
     match /payment_intents/{id} {
-      allow read: if canWriteFinance();
+      allow read:  if hasFinanceRole();
       allow write: if false;
     }
 
     match /payment_events/{id} {
-      allow read: if canWriteFinance();
+      allow read:  if hasFinanceRole();
       allow write: if false;
     }
 
-    match /refund_events/{id} {
-      allow read: if canWriteFinance();
-      allow write: if false;
-    }
-
-    match /audit_log/{id} {
-      allow read: if canReadAudit();
-      allow write: if false;
-    }
-
-    match /privileged_actions/{id} {
-      allow read: if hasOpsLeadership();
-      allow write: if false;
-    }
-
-    // Existing collections
-    match /ledgerEntries/{id} {
-      allow read: if canWriteFinance();
-      allow write: if canWriteFinance();
-    }
-
-    match /systemConfig/{docId} {
-      allow read: if hasFinanceLeadership();
-      allow write: if hasRole('GM') || hasRole('Manager');
-    }
-
-    match /hardware_devices/{id} {
-      allow read: if isAuthenticated();
-      allow write: if canWriteSecurity();
-    }
-
-    match /brand_documents/{id} {
-      allow read: if isAuthenticated();
-      allow write: if hasOpsLeadership();
-    }
-
-    match /brand_standards/{id} {
-      allow read: if isAuthenticated();
-      allow write: if hasOpsLeadership();
+    // ─── Deny Everything Else ────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

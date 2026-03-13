@@ -6,10 +6,30 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   const anthropicKey = env.VITE_ANTHROPIC_API_KEY || '';
   const isMainWorkspace = path.basename(process.cwd()) === 'Hotel_Singularity_OS_Source';
+
+  // On case-insensitive filesystems, "/app" can resolve to App.tsx in dev.
+  // Redirecting to "/app/" and "/superadmin" to "/superadmin/" forces SPA HTML fallback.
+  const appRouteCollisionFixPlugin = {
+    name: 'app-route-collision-fix',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url?.split('?')[0] ?? '';
+        if (url === '/app' || url === '/superadmin') {
+          res.statusCode = 302;
+          res.setHeader('Location', url + '/' + (req.url?.includes('?') ? '?' + req.url.split('?')[1] : ''));
+          res.end();
+          return;
+        }
+        next();
+      });
+    },
+  };
+
   return {
+    cacheDir: '/tmp/vite-cache',
     server: {
       port: 3005,
-      host: '127.0.0.1',
+      host: true, // Listen on all interfaces (localhost + LAN)
       watch: isMainWorkspace ? { ignored: ['**/Demo_200Rooms/**'] } : undefined,
       proxy: {
         // Proxy Anthropic API calls to avoid CORS in the browser
@@ -37,7 +57,7 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    plugins: [react()],
+    plugins: [appRouteCollisionFixPlugin, react()],
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),

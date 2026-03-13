@@ -8,20 +8,77 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "hosting": {
-    "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  },
+  "hosting": [
+    {
+      "target": "main",
+      "public": "dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "redirects": [
+        {
+          "source": "/demo",
+          "destination": "https://singularity-property-os-7843c.web.app",
+          "type": 302
+        },
+        {
+          "source": "/demo/**",
+          "destination": "https://singularity-property-os-7843c.web.app",
+          "type": 302
+        }
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    },
+    {
+      "target": "website",
+      "public": "dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "redirects": [
+        {
+          "source": "/demo",
+          "destination": "https://singularity-property-os-7843c.web.app",
+          "type": 302
+        },
+        {
+          "source": "/demo/**",
+          "destination": "https://singularity-property-os-7843c.web.app",
+          "type": 302
+        },
+        {
+          "source": "/app",
+          "destination": "https://singularity-property-os.web.app",
+          "type": 302
+        },
+        {
+          "source": "/app/**",
+          "destination": "https://singularity-property-os.web.app",
+          "type": 302
+        },
+        {
+          "source": "/",
+          "destination": "/website",
+          "type": 302
+        }
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    }
+  ],
   "emulators": {
     "auth": {
       "port": 9099
@@ -36,8 +93,7 @@
       "port": 5005
     },
     "ui": {
-      "enabled": true,
-      "port": 4000
+      "enabled": false
     },
     "singleProjectMode": true
   }

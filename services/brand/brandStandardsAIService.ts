@@ -1,8 +1,10 @@
 /**
- * Brand Standards AI Service
- * 
- * This service uses the system knowledge base to analyze brand documents
- * and automatically propose system adaptations.
+ * Brand Standards AI Service — Fred
+ *
+ * Fred is the Brand & Compliance Agent of Hotel Singularity OS.
+ * He owns brand document analysis, UI/UX compliance enforcement,
+ * visual identity management, SOP compliance, and autonomous brand
+ * orchestration (proposing + applying CSS/config/workflow adaptations).
  */
 
 import { BrandDocument, BrandChange } from '../../types';
@@ -31,6 +33,8 @@ export interface SystemAdaptation {
     rollbackPlan: string;
     affectedModules: string[];
     confidence: number;
+    description?: string;
+    reasoning?: string;
 }
 
 export interface DocumentAnalysis {
@@ -270,7 +274,7 @@ class BrandStandardsAI {
         // 4. Update the system state
         // 5. Log the change
 
-        console.log(`[Brand Standards AI] Applying adaptation:`, {
+        console.log(`[Fred — Brand Agent] Applying adaptation:`, {
             type: adaptation.type,
             target: adaptation.targetFile,
             change: adaptation.proposedChange
@@ -290,7 +294,7 @@ class BrandStandardsAI {
         success: boolean;
         error?: string;
     }> {
-        console.log(`[Brand Standards AI] Rolling back adaptation: ${adaptationId}`);
+        console.log(`[Fred — Brand Agent] Rolling back adaptation: ${adaptationId}`);
 
         // Real implementation would:
         // 1. Retrieve rollback plan

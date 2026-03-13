@@ -1,5 +1,20 @@
 {
   "projects": {
-    "default": "singularity-os-21d79"
+    "default": "singularity-property-os"
+  },
+  "targets": {
+    "singularity-property-os": {
+      "hosting": {
+        "main": [
+          "singularity-property-os"
+        ],
+        "demo": [
+          "singularity-property-os-7843c"
+        ],
+        "website": [
+          "singularity-property-os-web"
+        ]
+      }
+    }
   }
 }

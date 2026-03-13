@@ -7,7 +7,7 @@ export type SystemLog = {
   timestamp: string;
   source: string;
   action: string;
-  module: 'POS' | 'PMS' | 'HK' | 'FINANCE' | 'IOT' | 'PROCUREMENT' | 'KERNEL';
+  module: 'POS' | 'PMS' | 'HK' | 'FINANCE' | 'IOT' | 'PROCUREMENT' | 'KERNEL' | 'HOUSEKEEPING' | 'HR' | 'EVENTS' | 'COMMS' | 'ENGINEERING';
   details: string;
   latency: number; // ms
   cost?: number;

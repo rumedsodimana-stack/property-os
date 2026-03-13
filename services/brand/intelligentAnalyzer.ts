@@ -52,14 +52,21 @@ class IntelligentAnalyzer {
         // Step 1: Parse document (if file provided)
         let parsedDoc: ParsedDocument | null = null;
         if (file) {
-            if (file.type === 'application/pdf') {
+            const lowerName = file.name.toLowerCase();
+            const isPDF = file.type === 'application/pdf' || lowerName.endsWith('.pdf');
+            const isImage = file.type.startsWith('image/');
+            const isText = file.type.startsWith('text/') || lowerName.endsWith('.md') || lowerName.endsWith('.txt');
+
+            if (isPDF) {
                 parsedDoc = await documentParser.parsePDF(file, {
                     extractImages: true,
                     performOCR: true,
                     preserveFormatting: true
                 });
-            } else if (file.type.startsWith('image/')) {
+            } else if (isImage) {
                 parsedDoc = await documentParser.parseImage(file);
+            } else if (isText) {
+                parsedDoc = await documentParser.parseText(file);
             }
         }
 
@@ -147,7 +154,7 @@ class IntelligentAnalyzer {
                 analysisType = 'colors';
             } else if (category === 'sop') {
                 analysisType = 'workflows';
-            } else if (category === 'guideline') {
+            } else if (category === 'guideline' || category === 'system_doc') {
                 analysisType = 'policies';
             }
 
@@ -301,9 +308,22 @@ class IntelligentAnalyzer {
         if (lower.includes('guest') || lower.includes('service')) {
             areas.push('guest_service');
         }
+        if (
+            lower.includes('ai agent') ||
+            lower.includes('agent behavior') ||
+            lower.includes('system prompt') ||
+            lower.includes('assistant behavior') ||
+            lower.includes('response style') ||
+            lower.includes('execution log')
+        ) {
+            areas.push('ai_agents');
+        }
 
         if (areas.length === 0 && category === 'sop') {
             return ['operations'];
+        }
+        if (areas.length === 0 && category === 'system_doc') {
+            return ['ai_agents'];
         }
 
         return areas;
@@ -377,6 +397,9 @@ class IntelligentAnalyzer {
         }
         if (areas.includes('pos')) {
             return '/components/pos/POSDashboard.tsx';
+        }
+        if (areas.includes('ai_agents')) {
+            return '/services/intelligence/agentService.ts';
         }
         return '/App.tsx';
     }

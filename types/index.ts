@@ -53,10 +53,32 @@ export interface User {
 export interface Property {
   id: string;
   name: string;
-  location: string;
+  /** @deprecated Use getPropertyConfig().address instead */
+  location?: string;
   currency: string;
   taxRate: number;
   timezone: string;
+}
+
+export type OtaChannel = 'booking_com' | 'expedia';
+
+export interface OtaRatePlanMapping {
+  channel: OtaChannel;
+  channelHotelId: string;
+  channelRatePlanId: string;
+  localRatePlanId: string;
+  currency: string;
+}
+
+export type GdsChannel = 'amadeus' | 'sabre';
+
+export interface GdsRatePlanMapping {
+  channel: GdsChannel;
+  pseudoCityCode: string;
+  channelHotelId: string;
+  channelRatePlanId: string;
+  localRatePlanId: string;
+  currency: string;
 }
 
 export interface RoomAttribute {
@@ -109,6 +131,7 @@ export interface Room {
   };
   currentGuestId?: string;
   assignedReservationId?: string;
+  floor?: number;
 }
 
 export interface Reservation {
@@ -126,19 +149,22 @@ export interface Reservation {
   rateApplied: number;
   noShowProbability: number;
   paymentMethod: string;
+  paymentIntentId?: string | null; // Stripe Payment Intent ID
   accompanyingGuests: string[];
 
   // Phase 1.5 - Advanced Reservation Features
   marketCode?: string;
   sourceCode?: string;
   channel?: string;
-  guaranteeType?: 'CC' | 'Deposit' | 'Non-Guaranteed' | 'Company';
+  guaranteeType?: 'CC' | 'Deposit' | 'Non-Guaranteed' | 'Company' | 'Credit Card';
   routingInstructions?: {
     type: 'Room&Tax' | 'All' | 'Incidental';
     targetId: string; // Master Folio ID or Company ID
   }[];
   traces?: Trace[];
   alerts?: ReservationAlert[];
+  notes?: ReservationNote[];
+  journal?: ReservationJournalEntry[];
   blockId?: string; // If part of a Business Block
   history?: {
     date: string;
@@ -146,6 +172,39 @@ export interface Reservation {
     user: string;
     details: string;
   }[];
+  marketSegment?: string;
+  postingAllowed?: boolean;
+  creditLimit?: number;
+  paymentCustomerId?: string;
+}
+
+export interface ReservationNote {
+  id: string;
+  createdAt: string;
+  createdBy: string;
+  text: string;
+  visibility: 'Internal' | 'Shift' | 'Guest';
+  category?: 'General' | 'Arrival' | 'Departure' | 'Billing' | 'Housekeeping' | 'Service';
+  pinned?: boolean;
+}
+
+export interface ReservationJournalEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  actor: string;
+  message: string;
+  eventType:
+  | 'reservation_created'
+  | 'reservation_updated'
+  | 'status_changed'
+  | 'check_in'
+  | 'check_out'
+  | 'note_added'
+  | 'alert_added'
+  | 'trace_added'
+  | 'system';
+  metadata?: Record<string, string | number | boolean | null>;
 }
 
 export interface Trace {
@@ -206,6 +265,62 @@ export interface Folio {
   status: 'Open' | 'Closed';
 }
 
+export type GuestKeyStatus = 'issuing' | 'active' | 'revoked' | 'expired' | 'failed';
+export type GuestKeyChannel = 'apple_wallet' | 'google_wallet' | 'both';
+export type GuestKeyProvider = 'mock' | 'vingcard' | 'salto' | 'assa_abloy' | 'dormakaba';
+
+export interface GuestWalletCredential {
+  status: 'pending' | 'ready' | 'failed';
+  walletId?: string;
+  addUrl?: string;
+  lastSentAt?: number;
+  error?: string;
+}
+
+export interface GuestKey {
+  id: string;
+  reservationId: string;
+  guestId: string;
+  propertyId: string;
+  roomId: string;
+  roomNumber?: string;
+  status: GuestKeyStatus;
+  channel: GuestKeyChannel;
+  provider: GuestKeyProvider;
+  issuedAt: number;
+  issuedBy: string;
+  validFrom: number;
+  validUntil: number;
+  revokedAt?: number;
+  revokedBy?: string;
+  revokeReason?: string;
+  errorMessage?: string;
+  source?: string;
+  appleWallet?: GuestWalletCredential;
+  googleWallet?: GuestWalletCredential;
+  metadata?: Record<string, string | number | boolean | null>;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export interface GuestKeyEvent {
+  id: string;
+  guestKeyId: string;
+  reservationId: string;
+  eventType:
+  | 'key_issued'
+  | 'key_issue_failed'
+  | 'key_revoked'
+  | 'wallet_link_resent'
+  | 'room_changed'
+  | 'status_sync';
+  actor: string;
+  actorRole?: string;
+  occurredAt: number;
+  reason?: string;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
 // ============================================================
 // PHASE 9: UNIFIED LEDGER & BI ENGINE (Reporting Foundation)
 // ============================================================
@@ -240,6 +355,10 @@ export interface LedgerEntry {
 
   description: string;
   moduleSource: 'PMS' | 'POS' | 'Procurement' | 'Events' | 'Payroll' | 'Manual';
+  /** Optional compliance annotation (e.g. audit flag, regulatory note) */
+  complianceFlag?: string;
+  type?: string;
+  amount?: number;
 }
 
 export interface HousekeepingTask {
@@ -359,6 +478,10 @@ export interface Supplier {
   rating: number;
   paymentTerms: string;
   currency: string;
+  contactName?: string;
+  contactPhone?: string;
+  taxId?: string;
+  address?: string;
   complianceFlags: {
     halal: boolean;
     zatca: boolean;
@@ -475,10 +598,13 @@ export interface MasterInventoryItem {
   parLevel: number;
   reorderPoint: number;
   locations: { locationId: string; locationName: string; stock: number }[];
+  supplierId?: string;
+  unitCost?: number;
 }
 
 // HR Models
 export interface EmployeeProfile {
+  id?: string;
   principal: string;
   fullName: string;
   role: string;
@@ -523,6 +649,8 @@ export interface Shift {
   actualEnd?: string;
   status: 'Scheduled' | 'ClockedIn' | 'Completed' | 'Absent';
   department: string;
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface PayrollRun {
@@ -546,6 +674,84 @@ export interface YieldRule {
   action: { adjustmentType: string; valueType: string; value: number };
   isActive: boolean;
   aiConfidence?: number;
+}
+
+export interface CompetitorRate {
+  competitorId: string;
+  name: string;
+  channel: 'booking_com' | 'expedia' | 'airbnb' | 'direct' | 'gds';
+  rate: number;
+  currency: string;
+  stayDate: string; // YYYY-MM-DD
+  roomType?: string;
+  lastScraped: number;
+}
+
+export interface CompsetSnapshot {
+  id: string;
+  capturedAt: number;
+  targetDate: string; // Stay date
+  averageRate: number;
+  minRate: number;
+  maxRate: number;
+  source: string;
+  competitors: CompetitorRate[];
+  propertyId: string;
+}
+
+export interface DemandEvent {
+  id: string;
+  name: string;
+  date: string; // YYYY-MM-DD
+  impact: 'Low' | 'Medium' | 'High';
+  category?: string;
+  source?: string;
+  venue?: string;
+  expectedAttendance?: number;
+}
+
+export interface RateRecommendation {
+  id: string;
+  date: string;
+  baseRate: number;
+  recommendedRate: number;
+  currency: string;
+  occupancy: number;
+  compsetAverage?: number;
+  demandImpact?: string;
+  reasons: string[];
+  createdAt: number;
+}
+
+export interface RatePushLog {
+  id: string;
+  runAt: number;
+  targetDate: string;
+  channels: string[];
+  status: 'sent' | 'failed';
+  message?: string;
+  details?: Record<string, any>;
+}
+
+export interface LosRestriction {
+  id: string;
+  dateStart: string; // YYYY-MM-DD
+  dateEnd: string;
+  minNights: number;
+  reason?: string;
+  createdAt: number;
+}
+
+export interface RoomQualityCheck {
+  id?: string;
+  propertyId: string;
+  roomId: string;
+  imageUrl: string;
+  pass: boolean;
+  score: number;
+  findings: string[];
+  recommendations: string[];
+  createdAt: number | any;
 }
 
 export interface BEOAgendaItem {
@@ -576,6 +782,8 @@ export interface BanquetEvent {
   venueId: string;
   status: 'Tentative' | 'Definite' | 'Actualized' | 'Cancelled';
   totalValue: number;
+  cancellationReason?: string;
+  cancelledAt?: string;
   bfeoUrl?: string; // Digital BEO
   agenda?: BEOAgendaItem[];
   foodAndBeverage?: BEOFoodItem[];
@@ -601,8 +809,11 @@ export interface MaintenanceTask {
   type: 'Preventive' | 'Corrective';
   description: string;
   priority: 'Low' | 'Medium' | 'High';
-  status: 'Open' | 'In Progress' | 'Completed';
+  status: 'Open' | 'In Progress' | 'Completed' | 'Closed';
   technicianId?: string;
+  issue?: string;
+  date?: string;
+  cost?: number;
 }
 
 // ---------------- NEW: SECURITY & VISITORS (Replacing Proxyclick) ----------------
@@ -633,7 +844,7 @@ export interface CommsMessage {
   threadId?: string;
 }
 
-export type TaskDepartment = 'Housekeeping' | 'MiniBar' | 'IRD' | 'Concierge' | 'Maintenance' | 'General' | 'Kitchen' | 'Bar' | 'Security' | 'Events';
+export type TaskDepartment = 'Housekeeping' | 'HK' | 'MiniBar' | 'IRD' | 'Concierge' | 'Maintenance' | 'General' | 'Kitchen' | 'Bar' | 'Security' | 'Events';
 
 export interface Task {
   id: string;
@@ -702,17 +913,30 @@ export interface Suggestion {
 // Brand Standards Types
 export interface BrandDocument {
   id: string;
-  category: 'asset' | 'license' | 'guideline' | 'sop' | 'agreement' | 'job_description' | 'system_doc';
+  category: 'asset' | 'license' | 'certificate' | 'guideline' | 'sop' | 'agreement' | 'job_description' | 'system_doc';
   title: string;
   description: string;
   fileUrl: string;
-  fileType: string; // 'pdf', 'image', 'video', 'doc'
+  fileType: string; // 'pdf', 'image', 'video', 'doc', 'markdown', 'text'
   version: string;
   uploadedBy: string;
   uploadedAt: string;
   status: 'draft' | 'pending_review' | 'approved' | 'archived';
   metadata: Record<string, any>;
   tags?: string[];
+}
+
+export interface BrandMainStandardDocument {
+  id: string;
+  title: string;
+  content: string;
+  version: number;
+  status: 'draft' | 'generated' | 'approved' | 'blank';
+  generatedAt: string;
+  updatedAt: string;
+  linkedDocumentIds: string[];
+  linkedCategories: BrandDocument['category'][];
+  metadata?: Record<string, any>;
 }
 
 export interface BrandChange {
@@ -1283,3 +1507,13 @@ export interface RatePlan {
 }
 
 export * from "./contracts";
+export * from "./recreation";
+export * from "./crm";
+
+export interface ReportMetric {
+    key: string;
+    label: string;
+    format?: (val: number) => string;
+    aggregation: 'sum' | 'count' | 'avg';
+    unit?: string;
+}

@@ -1,6 +1,10 @@
 import { Reservation, ReservationStatus } from '../../types';
 import { addItem } from '../kernel/firestoreService';
 import { CURRENT_PROPERTY } from '../kernel/config';
+import { tenantService } from '../kernel/tenantService';
+import { pipeline } from '../intelligence/smartDataPipeline';
+import { validateEmail, validatePhone, calculateNights } from '../../src/utils/shared';
+import { VALIDATION_MESSAGES } from '../../src/config/messages';
 
 export interface BookingRequest {
     roomTypeId: string;
@@ -14,6 +18,8 @@ export interface BookingRequest {
     children: number;
     specialRequests?: string;
     ratePerNight: number;
+    paymentIntentId?: string;
+    paymentCustomerId?: string;
 }
 
 export interface BookingResult {
@@ -24,34 +30,32 @@ export interface BookingResult {
 }
 
 /**
- * Calculate number of nights between check-in and check-out
+ * Generate a collision-resistant ID using crypto.randomUUID() with a prefix.
+ * Falls back to a longer random string if crypto is unavailable.
  */
-const calculateNights = (checkIn: Date, checkOut: Date): number => {
-    const oneDay = 1000 * 60 * 60 * 24;
-    const diffTime = checkOut.getTime() - checkIn.getTime();
-    return Math.ceil(diffTime / oneDay);
+const generateId = (prefix: string): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return `${prefix}${crypto.randomUUID().replace(/-/g, '').toUpperCase()}`;
+    }
+    // Fallback: timestamp + 9 random chars (safe in environments without SubtleCrypto)
+    const rand = Math.random().toString(36).substr(2, 9).toUpperCase();
+    return `${prefix}${Date.now()}${rand}`;
 };
 
 /**
  * Generate unique guest ID
  */
-const generateGuestId = (): string => {
-    return `GUEST${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-};
+const generateGuestId = (): string => generateId('GUEST');
 
 /**
  * Generate unique reservation ID
  */
-const generateReservationId = (): string => {
-    return `RES${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-};
+const generateReservationId = (): string => generateId('RES');
 
 /**
  * Generate unique folio ID
  */
-const generateFolioId = (): string => {
-    return `FOL${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-};
+const generateFolioId = (): string => generateId('FOL');
 
 /**
  * Create guest profile
@@ -106,11 +110,12 @@ const createFolio = async (reservationId: string) => {
  */
 export const createReservation = async (
     bookingRequest: BookingRequest,
-    guestId: string
+    guestId: string,
+    paymentIntentId?: string
 ): Promise<Reservation> => {
+    const propertyId = tenantService.getActivePropertyId();
     const reservationId = generateReservationId();
     const nights = calculateNights(bookingRequest.checkIn, bookingRequest.checkOut);
-    const total = nights * bookingRequest.ratePerNight;
 
     // Create folio first
     const folioId = await createFolio(reservationId);
@@ -118,7 +123,7 @@ export const createReservation = async (
     const reservation: Reservation = {
         id: reservationId,
         guestId,
-        propertyId: CURRENT_PROPERTY.id,
+        propertyId,
         roomId: '', // Assigned at check-in by front desk
         roomTypeId: bookingRequest.roomTypeId,
         checkIn: bookingRequest.checkIn.toISOString(),
@@ -130,6 +135,8 @@ export const createReservation = async (
         rateApplied: bookingRequest.ratePerNight,
         noShowProbability: 0.1,
         paymentMethod: 'Credit Card',
+        paymentIntentId: paymentIntentId || bookingRequest.paymentIntentId || null,
+        paymentCustomerId: bookingRequest.paymentCustomerId || null,
         accompanyingGuests: []
     };
 
@@ -151,8 +158,8 @@ export const completeBooking = async (bookingRequest: BookingRequest): Promise<B
         // Step 1: Create guest profile
         const guest = await createGuestProfile(bookingRequest);
 
-        // Step 2: Create reservation
-        const reservation = await createReservation(bookingRequest, guest.id);
+        // Step 2: Create reservation (include paymentIntentId for audit trail)
+        const reservation = await createReservation(bookingRequest, guest.id, bookingRequest.paymentIntentId);
 
         // Step 3: Send confirmation (mock)
         sendConfirmationEmail(reservation, guest, bookingRequest);
@@ -165,6 +172,21 @@ export const completeBooking = async (bookingRequest: BookingRequest): Promise<B
         console.log('[Booking] Reservation:', reservation.id);
         console.log('[Booking] Check-in:', new Date(reservation.checkIn).toLocaleDateString());
         console.log('[Booking] Total:', `${CURRENT_PROPERTY.currency} ${total.toFixed(2)}`);
+
+        // Emit pipeline event — triggers AI analysis asynchronously (non-blocking)
+        pipeline.emit({
+            type: 'reservation',
+            payload: {
+                reservationId: reservation.id,
+                guestName: guest.fullName,
+                roomType: bookingRequest.roomTypeName,
+                amount: total,
+                checkIn: reservation.checkIn,
+                checkOut: reservation.checkOut,
+            },
+            module: 'front_desk',
+            timestamp: Date.now(),
+        });
 
         return {
             success: true,
@@ -219,31 +241,31 @@ export const validateBookingRequest = (request: Partial<BookingRequest>): string
     const errors: string[] = [];
 
     if (!request.guestName || request.guestName.trim().length < 2) {
-        errors.push('Guest name is required');
+        errors.push(VALIDATION_MESSAGES.guestNameRequired);
     }
 
-    if (!request.guestEmail || !request.guestEmail.includes('@')) {
-        errors.push('Valid email is required');
+    if (!request.guestEmail || !validateEmail(request.guestEmail)) {
+        errors.push(VALIDATION_MESSAGES.validEmailRequired);
     }
 
-    if (!request.guestPhone || request.guestPhone.length < 10) {
-        errors.push('Valid phone number is required');
+    if (!request.guestPhone || !validatePhone(request.guestPhone)) {
+        errors.push(VALIDATION_MESSAGES.validPhoneRequired);
     }
 
     if (!request.checkIn || !request.checkOut) {
-        errors.push('Check-in and check-out dates are required');
+        errors.push(VALIDATION_MESSAGES.checkInCheckOutRequired);
     }
 
     if (request.checkIn && request.checkOut && request.checkIn >= request.checkOut) {
-        errors.push('Check-out must be after check-in');
+        errors.push(VALIDATION_MESSAGES.checkOutAfterCheckIn);
     }
 
     if (!request.adults || request.adults < 1) {
-        errors.push('At least one adult is required');
+        errors.push(VALIDATION_MESSAGES.adultsRequired);
     }
 
     if (!request.roomTypeId) {
-        errors.push('Room type must be selected');
+        errors.push(VALIDATION_MESSAGES.roomTypeRequired);
     }
 
     return errors;

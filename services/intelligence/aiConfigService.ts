@@ -27,17 +27,18 @@ class AIConfigurationService {
     /** Safely read env vars across Vite (import.meta.env) and Node (process.env) */
     private getEnv(key: string): string {
         try {
-            // @ts-ignore
-            if (import.meta && import.meta.env && import.meta.env[key]) {
-                // @ts-ignore
-                return import.meta.env[key];
-            }
-        } catch { }
+            const env = (import.meta as { env?: Record<string, string> }).env;
+            if (env && typeof env[key] === 'string') return env[key];
+        } catch (e) {
+            if (e instanceof Error) console.debug('[AI Config] getEnv import.meta:', e.message);
+        }
         try {
             if (typeof process !== 'undefined' && process.env && process.env[key]) {
                 return process.env[key] as string;
             }
-        } catch { }
+        } catch (e) {
+            if (e instanceof Error) console.debug('[AI Config] getEnv process:', e.message);
+        }
         return '';
     }
 
@@ -360,8 +361,21 @@ You are READ-ONLY. You analyze data and create reports but CANNOT modify any sys
     isOperationAllowed(tier: AITier, operation: string): boolean {
         const config = this.configurations.get(tier);
         if (!config) return false;
+        const defaults = this.getDefaultPermissions(tier);
+        const denied = defaults.deniedOperations || [];
+        const allowed = config.permissions.allowedOperations || [];
+        const op = (operation || '').trim();
+        if (!op) return false;
 
-        return config.permissions.allowedOperations.includes(operation);
+        const matches = (pattern: string, value: string): boolean => {
+            if (pattern.endsWith('*')) {
+                return value.startsWith(pattern.slice(0, -1));
+            }
+            return pattern === value;
+        };
+
+        if (denied.some(pattern => matches(pattern, op))) return false;
+        return allowed.some(pattern => matches(pattern, op));
     }
 
     /**

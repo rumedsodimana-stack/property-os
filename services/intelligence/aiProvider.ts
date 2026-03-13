@@ -47,24 +47,26 @@ class AIProvider {
     private tokenUsageLog: TokenUsage[] = [];
     private requestCount = 0;
     private lastResetTime = Date.now();
+    private readonly runtimeStorageKey = 'hs_ai_runtime_config';
+    private rateLimitIntervalId: ReturnType<typeof setInterval> | null = null;
+    private feedbackMemory: Array<{ proposal: any; approved: boolean; feedback?: string; timestamp: string }> = [];
 
     constructor(config?: Partial<AIConfig>) {
         // Safe access to environment variables (supports browser/Vite and Node/Vitest)
-        const getEnv = (key: string) => {
+        const getEnv = (key: string): string => {
             try {
-                // @ts-ignore - import.meta.env is handled by Vite
-                if (import.meta && import.meta.env && import.meta.env[key]) {
-                    // @ts-ignore
-                    return import.meta.env[key];
-                }
-            } catch (e) { }
-
+                const env = (import.meta as { env?: Record<string, string> }).env;
+                if (env && typeof env[key] === 'string') return env[key];
+            } catch (e) {
+                if (e instanceof Error) console.debug('[AI Provider] getEnv import.meta:', e.message);
+            }
             try {
                 if (typeof process !== 'undefined' && process.env && process.env[key]) {
-                    return process.env[key];
+                    return process.env[key] as string;
                 }
-            } catch (e) { }
-
+            } catch (e) {
+                if (e instanceof Error) console.debug('[AI Provider] getEnv process:', e.message);
+            }
             return '';
         };
 
@@ -77,6 +79,10 @@ class AIProvider {
             ollamaUrl: getEnv('VITE_OLLAMA_URL') || 'http://localhost:11434',
             ...config
         };
+        this.loadRuntimeConfig();
+        if (!this.config.model) {
+            this.config.model = this.getDefaultModelForProvider(this.config.provider);
+        }
 
         this.rateLimitConfig = {
             requestsPerMinute: 60,
@@ -85,11 +91,47 @@ class AIProvider {
             retryDelay: 1000
         };
 
-        // Reset counters every minute
-        setInterval(() => {
+        // Reset counters every minute (cleared on teardown)
+        this.rateLimitIntervalId = setInterval(() => {
             this.requestCount = 0;
             this.lastResetTime = Date.now();
         }, 60000);
+    }
+
+    /** Call to clear intervals and prevent memory leaks */
+    destroy(): void {
+        if (this.rateLimitIntervalId !== null) {
+            clearInterval(this.rateLimitIntervalId);
+            this.rateLimitIntervalId = null;
+        }
+    }
+
+    /**
+     * Runtime config bridge for UI controls.
+     * Changes are persisted and immediately applied to all AI calls.
+     */
+    updateRuntimeConfig(updates: Partial<AIConfig>): void {
+        const nextProvider = updates.provider || this.config.provider;
+        const providerChanged = typeof updates.provider === 'string' && updates.provider !== this.config.provider;
+        const currentModel = this.config.model || '';
+        const modelChanged = typeof updates.model === 'string' && updates.model.trim().length > 0;
+
+        this.config = {
+            ...this.config,
+            ...updates,
+            provider: nextProvider,
+            model: modelChanged
+                ? updates.model
+                : providerChanged
+                    ? this.getDefaultModelForProvider(nextProvider)
+                    : currentModel || this.getDefaultModelForProvider(nextProvider),
+        };
+
+        this.persistRuntimeConfig();
+    }
+
+    getRuntimeConfig(): AIConfig {
+        return { ...this.config };
     }
 
     /**
@@ -153,7 +195,6 @@ Keep it concise and non-technical.`;
         approved: boolean,
         feedback?: string
     ): Promise<void> {
-        // Store feedback for future pattern recognition
         const learningData = {
             proposal,
             approved,
@@ -161,11 +202,23 @@ Keep it concise and non-technical.`;
             timestamp: new Date().toISOString()
         };
 
-        // In production, this would be stored in a vector database
-        // For now, log it
-        console.log('[AI Learning]', learningData);
+        // Persist locally so feedback is not lost between sessions.
+        try {
+            const key = 'hs_ai_feedback_log';
+            const existingRaw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+            const existing = existingRaw ? JSON.parse(existingRaw) : [];
+            const next = Array.isArray(existing) ? [...existing, learningData].slice(-500) : [learningData];
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(key, JSON.stringify(next));
+            }
+            this.feedbackMemory = next;
+        } catch (err) {
+            // Fall back to in-memory buffer so data is still usable in-process
+            this.feedbackMemory = [...this.feedbackMemory, learningData].slice(-500);
+            console.warn('[AI Learning] Persisting feedback locally failed; stored in memory only.', err);
+        }
 
-        // TODO: Implement vector storage and pattern recognition
+        // Hook point: vector DB or analytics pipeline can consume feedbackMemory later.
     }
 
     /**
@@ -262,6 +315,52 @@ Keep it concise and non-technical.`;
         }
 
         throw new Error(`AI request failed after ${this.rateLimitConfig.maxRetries} retries: ${lastError?.message}`);
+    }
+
+    /**
+     * Streaming request — emits tokens via onToken callback while building the full response.
+     * Falls back to non-streaming if the provider/transport does not support streaming.
+     */
+    public async streamRequest(
+        prompt: string,
+        options: Partial<AIConfig> = {},
+        onToken?: (token: string) => void
+    ): Promise<AIResponse> {
+        const config = { ...this.config, ...options };
+
+        if (!config.apiKey && config.provider !== 'ollama') {
+            throw new Error('AI API key not configured. Set VITE_OPENAI_API_KEY, VITE_GEMINI_API_KEY, or VITE_ANTHROPIC_API_KEY');
+        }
+
+        try {
+            if (config.provider === 'openai') {
+                return await this.streamOpenAI(prompt, config, onToken);
+            }
+            if (config.provider === 'anthropic') {
+                return await this.streamAnthropic(prompt, config, onToken);
+            }
+            // Providers without streaming support: simulate fast streaming by chunking the final response
+            const fallback = await this.executeRequest(prompt, options);
+            if (onToken) {
+                const chunks = fallback.content.match(/.{1,80}/g) || [fallback.content];
+                for (const chunk of chunks) {
+                    onToken(chunk);
+                    await this.sleep(10);
+                }
+            }
+            return fallback;
+        } catch (error) {
+            console.error('[AI Provider] Streaming failed, falling back to standard request:', error);
+            const fallback = await this.executeRequest(prompt, options);
+            if (onToken) {
+                const chunks = fallback.content.match(/.{1,80}/g) || [fallback.content];
+                for (const chunk of chunks) {
+                    onToken(chunk);
+                    await this.sleep(10);
+                }
+            }
+            return fallback;
+        }
     }
 
     /**
@@ -471,6 +570,194 @@ Keep it concise and non-technical.`;
     }
 
     /**
+    * Stream OpenAI responses via SSE
+    */
+    private async streamOpenAI(
+        prompt: string,
+        config: AIConfig,
+        onToken?: (token: string) => void
+    ): Promise<AIResponse> {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.apiKey}`
+            },
+            body: JSON.stringify({
+                model: config.model || 'gpt-4',
+                messages: config.messages || [
+                    {
+                        role: 'system',
+                        content: config.systemPrompt || 'You are an expert AI assistant for hotel property management systems, specializing in brand standards and operational optimization.'
+                    },
+                    { role: 'user', content: prompt }
+                ],
+                max_tokens: config.maxTokens,
+                temperature: config.temperature,
+                stream: true
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(`OpenAI streaming error: ${error.error?.message || response.statusText}`);
+        }
+
+        if (!response.body) {
+            throw new Error('OpenAI streaming not supported in this environment');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullContent = '';
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (!line.startsWith('data:')) continue;
+                const dataStr = line.replace(/^data:\s*/, '').trim();
+                if (!dataStr || dataStr === '[DONE]') continue;
+                try {
+                    const parsed = JSON.parse(dataStr);
+                    const delta = parsed.choices?.[0]?.delta?.content;
+                    if (delta) {
+                        fullContent += delta;
+                        onToken?.(delta);
+                    }
+                } catch {
+                    // Ignore malformed chunks
+                }
+            }
+        }
+
+        const promptTokens = Math.ceil(prompt.length / 4);
+        const completionTokens = Math.ceil(fullContent.length / 4);
+        const usage: TokenUsage = {
+            prompt: promptTokens,
+            completion: completionTokens,
+            total: promptTokens + completionTokens,
+            cost: this.calculateCost(
+                { prompt_tokens: promptTokens, completion_tokens: completionTokens, total_tokens: promptTokens + completionTokens },
+                config.model || 'gpt-4'
+            )
+        };
+
+        this.tokenUsageLog.push(usage);
+
+        return {
+            content: fullContent,
+            usage,
+            model: config.model || 'gpt-4',
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    /**
+    * Stream Anthropic Claude responses via SSE
+    */
+    private async streamAnthropic(
+        prompt: string,
+        config: AIConfig,
+        onToken?: (token: string) => void
+    ): Promise<AIResponse> {
+        const model = config.model || 'claude-3-haiku-20240307';
+        const url = '/api/anthropic/v1/messages';
+
+        const anthropicMessages = config.messages
+            ? config.messages.map(m => ({ role: m.role === 'system' ? 'user' : m.role, content: m.content }))
+            : [{ role: 'user', content: prompt }];
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+                // Proxy injects auth headers
+            },
+            body: JSON.stringify({
+                model,
+                system: config.systemPrompt,
+                max_tokens: config.maxTokens || 4000,
+                temperature: config.temperature || 0.7,
+                messages: anthropicMessages,
+                stream: true
+            })
+        });
+
+        if (!response.ok) {
+            let errorMessage = response.statusText;
+            try {
+                const error = await response.json();
+                errorMessage = error.error?.message || errorMessage;
+            } catch { /* ignore JSON parse errors */ }
+            throw new Error(`Anthropic streaming error (${response.status}): ${errorMessage}`);
+        }
+
+        if (!response.body) {
+            throw new Error('Anthropic streaming not supported in this environment');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullContent = '';
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const rawLine of lines) {
+                const line = rawLine.trim();
+                if (!line.startsWith('data:')) continue;
+                const dataStr = line.replace(/^data:\s*/, '').trim();
+                if (!dataStr || dataStr === '[DONE]') continue;
+                try {
+                    const parsed = JSON.parse(dataStr);
+                    const deltaText = parsed?.delta?.text || parsed?.content_block_delta?.delta?.text || parsed?.delta?.text;
+                    if (deltaText) {
+                        fullContent += deltaText;
+                        onToken?.(deltaText);
+                    }
+                } catch {
+                    // Ignore malformed SSE chunk
+                }
+            }
+        }
+
+        const promptTokens = Math.ceil(prompt.length / 4);
+        const completionTokens = Math.ceil(fullContent.length / 4);
+        const usage: TokenUsage = {
+            prompt: promptTokens,
+            completion: completionTokens,
+            total: promptTokens + completionTokens,
+            cost: this.calculateAnthropicCost(
+                {
+                    input_tokens: promptTokens,
+                    output_tokens: completionTokens
+                },
+                model
+            )
+        };
+
+        this.tokenUsageLog.push(usage);
+
+        return {
+            content: fullContent,
+            usage,
+            model,
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    /**
      * Build analysis prompt
      */
     private buildAnalysisPrompt(
@@ -639,10 +926,50 @@ Ensure type safety and follow existing code style.`;
     private sleep(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
+
+    private getDefaultModelForProvider(provider: AIConfig['provider']): string {
+        const defaults: Record<AIConfig['provider'], string> = {
+            anthropic: 'claude-3-haiku-20240307',
+            openai: 'gpt-4o-mini',
+            gemini: 'gemini-1.5-flash',
+            ollama: 'llama3.2'
+        };
+        return defaults[provider];
+    }
+
+    private loadRuntimeConfig(): void {
+        try {
+            const raw = localStorage.getItem(this.runtimeStorageKey);
+            if (!raw) return;
+            const parsed = JSON.parse(raw) as Partial<AIConfig>;
+            const { apiKey: _drop, ...safe } = parsed;
+            this.config = { ...this.config, ...safe };
+        } catch (error) {
+            console.warn('[AI Provider] Failed to load runtime config:', error);
+        }
+    }
+
+    private persistRuntimeConfig(): void {
+        try {
+            // Never persist apiKey to localStorage (XSS exposure risk)
+            const payload: Partial<AIConfig> = {
+                provider: this.config.provider,
+                model: this.config.model,
+                maxTokens: this.config.maxTokens,
+                temperature: this.config.temperature,
+                systemPrompt: this.config.systemPrompt,
+                ollamaUrl: this.config.ollamaUrl,
+            };
+            localStorage.setItem(this.runtimeStorageKey, JSON.stringify(payload));
+        } catch (error) {
+            console.warn('[AI Provider] Failed to persist runtime config:', error);
+        }
+    }
 }
 
 // Export singleton
 export const aiProvider = new AIProvider();
 
-// Export class for testing
+// Export class for testing and named imports
+export { AIProvider };
 export default AIProvider;

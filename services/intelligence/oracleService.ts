@@ -1,10 +1,44 @@
-import { GoogleGenAI } from "@google/genai";
 import { OracleContext, OracleAnalysisResponse, SystemConfigurationMap } from "../../types";
 import { ActionCard } from "../../types/simpleAI";
 import { botEngine } from "../kernel/systemBridge";
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+const resolveApiKey = () =>
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) ||
+  process.env.GEMINI_API_KEY ||
+  process.env.API_KEY ||
+  '';
+
+const callGeminiJSON = async (userMessage: string, systemPrompt: string, modelId = 'gemini-1.5-flash') => {
+  const apiKey = resolveApiKey();
+  if (!apiKey) throw new Error('Gemini API key missing');
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+    systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+    generationConfig: { responseMimeType: 'application/json' }
+  };
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => response.statusText);
+    throw new Error(`Gemini HTTP ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  const rawText =
+    data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join(' ') ||
+    data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+    data?.text ||
+    '';
+
+  return rawText;
+};
 
 // Mock System Configuration Map (The "State" of the OS)
 const SYSTEM_MAP: SystemConfigurationMap = {
@@ -90,7 +124,8 @@ const SYSTEM_MAP: SystemConfigurationMap = {
 class OracleService {
 
   public async analyzePrompt(context: OracleContext, userPrompt: string): Promise<OracleAnalysisResponse> {
-    if (!process.env.API_KEY) {
+    const apiKey = resolveApiKey();
+    if (!apiKey) {
       // Offline fallback for demo purposes
       return {
         analysis: "Oracle AI is running in offline simulation mode. Configuration change identified.",
@@ -104,24 +139,25 @@ class OracleService {
     }
 
     try {
-      const model = "gemini-3-flash-preview";
+      const modelId = "gemini-1.5-flash";
 
       const systemContext = JSON.stringify(SYSTEM_MAP);
       const requestContext = JSON.stringify(context);
 
       const systemPrompt = `
-        You are Oracle AI, the Backend System Architect for the Hotel Singularity OS.
+        You are Don — the Analytics Agent and Oracle AI of Hotel Singularity OS.
         Your role is to reconfigure the system based on natural language prompts from administrators.
-        
+        You translate plain-English commands into precise system configuration patches.
+
         CURRENT SYSTEM MAP: ${systemContext}
         ACTIVE CONTEXT: ${requestContext}
-        
+
         Task:
         1. Analyze the user's prompt to understand what system configuration needs to change.
         2. Identify dependencies. If a change in Module A affects Module B, note it.
         3. Determine the specific JSON patches/updates required.
         4. Assess risk (Low/Medium/High). High risk involves financial logic or security.
-        
+
         Output JSON Format:
         {
           "analysis": "Brief explanation of what will be changed and why.",
@@ -132,23 +168,16 @@ class OracleService {
         }
       `;
 
-      const result = await ai.models.generateContent({
-        model: model,
-        contents: userPrompt,
-        config: {
-          systemInstruction: systemPrompt,
-          responseMimeType: "application/json"
-        }
-      });
+      const rawText = await callGeminiJSON(userPrompt, systemPrompt, modelId);
 
-      const responseData = JSON.parse(result.text || '{}') as OracleAnalysisResponse;
+      const responseData = JSON.parse(rawText || '{}') as OracleAnalysisResponse;
 
       // Log to System Terminal via Bridge
       botEngine.logActivity(
         'KERNEL',
-        'Oracle_Analysis',
+        'Don_Oracle_Analysis',
         `Prompt: "${userPrompt}" -> ${responseData.proposedChanges.length} changes generated.`,
-        'Oracle_AI'
+        'Don_Analytics'
       );
 
       return responseData;
@@ -170,7 +199,7 @@ class OracleService {
         'KERNEL',
         'Config_Patch_Applied',
         `Target: ${change.target} | Action: ${change.action}`,
-        'Oracle_AI',
+        'Don_Analytics',
         'SUCCESS'
       );
     });

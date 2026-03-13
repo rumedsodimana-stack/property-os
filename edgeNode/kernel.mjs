@@ -10,7 +10,7 @@
  */
 
 import { createServer } from 'http';
-import { writeFile, readFile, mkdir, access } from 'fs/promises';
+import { writeFile, readFile, mkdir } from 'fs/promises';
 import { dirname, resolve, extname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -18,15 +18,94 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '..');
 const PORT = 4321;
 
-// ─── Security: only allow writes inside the project directory ───────────
-const isSafePath = (filePath) => {
+// ─── Hard Sandbox Policy ────────────────────────────────────────────────
+const ALLOWED_PATH_PREFIXES = [
+    'App.tsx',
+    'index.css',
+    'index.html',
+    'components/',
+    'services/',
+    'context/',
+    'src/',
+    'types/',
+    'docs/',
+    'public/'
+];
+
+const BLOCKED_PATH_SEGMENTS = [
+    '..',
+    '.git',
+    '.env',
+    'node_modules',
+    'dist/',
+    '.firebase',
+    '.singularity_backups',
+    'edgeNode/'
+];
+
+const ALLOWED_WRITE_EXTENSIONS = new Set(['.ts', '.tsx', '.css', '.json', '.md', '.html']);
+const MAX_CONTENT_BYTES = 300000;
+
+const normalizePath = (filePath) =>
+    String(filePath || '')
+        .replace(/\\/g, '/')
+        .replace(/^\.?\//, '')
+        .trim();
+
+const hasAllowedPrefix = (filePath) =>
+    ALLOWED_PATH_PREFIXES.some(prefix => filePath === prefix || filePath.startsWith(prefix));
+
+const hasBlockedSegment = (filePath) => {
+    const lower = filePath.toLowerCase();
+    return BLOCKED_PATH_SEGMENTS.some(seg => lower.includes(seg.toLowerCase()));
+};
+
+const isSafeResolvedPath = (filePath) => {
     const resolved = resolve(PROJECT_ROOT, filePath);
-    return resolved.startsWith(PROJECT_ROOT) && !resolved.includes('node_modules');
+    return resolved.startsWith(PROJECT_ROOT);
+};
+
+const validatePath = (filePath) => {
+    const normalized = normalizePath(filePath);
+    if (!normalized) return { ok: false, error: 'filePath is required' };
+    if (normalized.startsWith('/')) return { ok: false, error: 'Absolute paths are not allowed' };
+    if (!isSafeResolvedPath(normalized)) return { ok: false, error: 'Path resolves outside project root' };
+    if (hasBlockedSegment(normalized)) return { ok: false, error: 'Path blocked by hard sandbox policy' };
+    if (!hasAllowedPrefix(normalized)) return { ok: false, error: 'Path is outside sandbox allowlist' };
+    if (!ALLOWED_WRITE_EXTENSIONS.has(extname(normalized).toLowerCase())) {
+        return { ok: false, error: `File extension is not allowed. Allowed: ${[...ALLOWED_WRITE_EXTENSIONS].join(', ')}` };
+    }
+    return { ok: true, normalized };
+};
+
+const validateWritePayload = (filePath, content) => {
+    const pathResult = validatePath(filePath);
+    if (!pathResult.ok) return pathResult;
+    if (typeof content !== 'string') return { ok: false, error: 'content must be a string' };
+    if (!content.trim()) return { ok: false, error: 'content cannot be empty' };
+    const bytes = Buffer.byteLength(content, 'utf-8');
+    if (bytes > MAX_CONTENT_BYTES) {
+        return { ok: false, error: `content exceeds ${MAX_CONTENT_BYTES} bytes` };
+    }
+    return { ok: true, normalized: pathResult.normalized };
 };
 
 // ─── CORS headers ───────────────────────────────────────────────────────
-const cors = (res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+const ALLOWED_ORIGINS = new Set([
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    `http://localhost:${PORT}`,
+    `http://127.0.0.1:${PORT}`
+]);
+
+const cors = (req, res) => {
+    const origin = req.headers.origin;
+    if (origin && ALLOWED_ORIGINS.has(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 };
@@ -61,7 +140,7 @@ const createBackup = async (filePath) => {
 
 // ─── Request router ──────────────────────────────────────────────────────
 const server = createServer(async (req, res) => {
-    cors(res);
+    cors(req, res);
 
     // Preflight
     if (req.method === 'OPTIONS') {
@@ -83,7 +162,7 @@ const server = createServer(async (req, res) => {
     // Body: { filePath: "src/...", content: "...", description: "..." }
     if (url.pathname === '/write' && req.method === 'POST') {
         try {
-            const { filePath, content, description } = await readBody(req);
+            const { filePath, content, description, actor } = await readBody(req);
 
             if (!filePath || content === undefined) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -91,16 +170,18 @@ const server = createServer(async (req, res) => {
                 return;
             }
 
-            if (!isSafePath(filePath)) {
+            const validation = validateWritePayload(filePath, content);
+            if (!validation.ok) {
                 res.writeHead(403, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: false, error: 'Path is outside project root or in node_modules' }));
+                res.end(JSON.stringify({ success: false, error: validation.error }));
                 return;
             }
 
-            const resolved = resolve(PROJECT_ROOT, filePath);
+            const safePath = validation.normalized;
+            const resolved = resolve(PROJECT_ROOT, safePath);
 
             // Create backup first
-            const backupName = await createBackup(filePath);
+            const backupName = await createBackup(safePath);
 
             // Ensure directory exists
             await mkdir(dirname(resolved), { recursive: true });
@@ -108,11 +189,11 @@ const server = createServer(async (req, res) => {
             // Write the file
             await writeFile(resolved, content, 'utf-8');
 
-            console.log(`[Kernel] ✅ WROTE ${filePath} — ${description || 'no description'}`);
+            console.log(`[Kernel] ✅ WROTE ${safePath} — ${description || 'no description'}${actor ? ` [actor=${actor}]` : ''}`);
             if (backupName) console.log(`[Kernel] 📦 Backup: ${backupName}`);
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, filePath, backupName, description }));
+            res.end(JSON.stringify({ success: true, filePath: safePath, backupName, description }));
 
         } catch (err) {
             console.error('[Kernel] ❌ Write error:', err.message);
@@ -127,15 +208,17 @@ const server = createServer(async (req, res) => {
     if (url.pathname === '/read' && req.method === 'POST') {
         try {
             const { filePath } = await readBody(req);
-            if (!filePath || !isSafePath(filePath)) {
+            const validation = validatePath(filePath);
+            if (!validation.ok) {
                 res.writeHead(403, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: false, error: 'Invalid path' }));
+                res.end(JSON.stringify({ success: false, error: validation.error }));
                 return;
             }
-            const resolved = resolve(PROJECT_ROOT, filePath);
+            const safePath = validation.normalized;
+            const resolved = resolve(PROJECT_ROOT, safePath);
             const content = await readFile(resolved, 'utf-8');
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, filePath, content }));
+            res.end(JSON.stringify({ success: true, filePath: safePath, content }));
         } catch (err) {
             res.writeHead(404, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: false, error: err.message }));

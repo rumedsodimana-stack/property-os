@@ -7,10 +7,14 @@
     "dev": "vite",
     "dev:demo": "vite --mode demo --port 3004",
     "build": "vite build",
+    "audit:firestore-rules": "node scripts/auditFirestoreCollections.mjs",
+    "test:smoke-modules": "playwright test tests/module-smoke.spec.js --reporter=line --workers=1",
     "preview": "vite preview",
     "kernel": "node edgeNode/kernel.mjs",
     "dev:full": "concurrently \"npm run kernel\" \"npm run dev\"",
     "seed:demo:5star": "node scripts/seedFiveStarBusyDemo.mjs",
+    "seed:demo:20room": "node scripts/seedOperational20RoomHotel.mjs",
+    "seed:demo:property2": "node scripts/seedSecondPropertyCompact.mjs",
     "install:all": "npm install && npm --prefix Demo_200Rooms install",
     "dev:both": "concurrently -n main,demo -c cyan,magenta \"npm run dev -- --port 5173\" \"npm --prefix Demo_200Rooms run dev -- --port 5174\""
   },
@@ -21,6 +25,8 @@
     "@babel/traverse": "^7.29.0",
     "@babel/types": "^7.29.0",
     "@google/genai": "^1.38.0",
+    "@stripe/react-stripe-js": "^5.6.1",
+    "@stripe/stripe-js": "^8.9.0",
     "date-fns": "^3.3.1",
     "firebase": "^12.9.0",
     "lucide-react": "^0.562.0",
@@ -32,6 +38,7 @@
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "concurrently": "^9.2.1",
@@ -39,5 +46,8 @@
     "firebase-tools": "^15.7.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-arm64-gnu": "*"
   }
 }
