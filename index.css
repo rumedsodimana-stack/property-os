@@ -6,6 +6,12 @@
   --zinc-950: #060608;
   --zinc-900: #0f0f12;
 
+  /* TravelBook design system tokens */
+  --tb-primary: #0891b2;
+  --tb-primary-rgb: 8, 145, 178;
+  --tb-amber: #f59e0b;
+  --tb-amber-rgb: 245, 158, 11;
+
   /* Fallback iOS style variables, dynamically overridden by AppearanceContext */
   --system-accent: #007AFF;
   --system-accent-light: #34C759;
@@ -232,7 +238,7 @@ body {
 
 /* Premium Button Styles */
 .btn-primary {
-  @apply px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-violet-900/20;
+  @apply px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-sky-900/20;
 }
 
 .btn-secondary {
@@ -249,7 +255,7 @@ body {
 }
 
 .input-field:focus {
-  @apply border-violet-500/50 ring-2 ring-violet-500/10;
+  @apply border-sky-500/50 ring-2 ring-sky-500/10;
 }
 
 /* Tab Styles */

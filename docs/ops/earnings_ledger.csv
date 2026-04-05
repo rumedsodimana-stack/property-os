@@ -1,0 +1,2 @@
+date,lane,status,client_or_platform,description,currency,amount,received_amount,notes
+2026-03-31,setup,created,system,Initialized earnings ledger,USD,0,0,Starting point for April 2026 revenue tracking

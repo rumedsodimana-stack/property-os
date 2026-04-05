@@ -1,0 +1,39 @@
+date,channel,target,action,status,notes
+2026-03-31,gmail,system,accessibility_check,blocked,macOS blocked synthetic keystrokes for Gmail send automation
+2026-03-31,gmail,system,chrome_js_apple_events_check,blocked,Chrome blocked JavaScript from Apple Events for DOM-based Gmail automation
+2026-03-31,gmail,Chic & Unique Hotels Group,compose_opened,ready,Compose tab opened in logged-in Gmail session
+2026-03-31,gmail,Areen Hospitality,compose_opened,ready,Compose tab opened in logged-in Gmail session
+2026-03-31,gmail,Gulf Hotels Group,compose_opened,ready,Compose tab opened in logged-in Gmail session
+2026-03-31,gmail,Al Watani Hotel and Restaurant Management,compose_opened,ready,Compose tab opened in logged-in Gmail session
+2026-03-31,gmail,TTK Holding Hotel Management,compose_opened,ready,Compose tab opened in logged-in Gmail session
+2026-03-31,gmail,Chic & Unique Hotels Group,gmail_sent,failed,send confirmation not detected
+2026-03-31,gmail,Areen Hospitality,gmail_sent,sent,Message sent toast detected
+2026-03-31,gmail,Gulf Hotels Group,gmail_sent,sent,Message sent toast detected
+2026-03-31,gmail,Al Watani Hotel and Restaurant Management,gmail_sent,sent,Message sent toast detected
+2026-03-31,gmail,TTK Holding Hotel Management,gmail_sent,sent,Message sent toast detected
+2026-03-31,gmail,Chic & Unique Hotels Group,gmail_sent,sent,Retry succeeded with strict Gmail send selector
+2026-03-31,gmail,Habara Group,gmail_sent,sent,Message sent toast detected
+2026-03-31,gmail,Reef Boutique Hotel,gmail_sent,sent,Message sent toast detected
+2026-03-31,gmail,Aleph Hospitality,gmail_sent,sent,Message sent toast detected
+2026-03-31,gmail,Jannah Hotels & Resorts,gmail_sent,sent,Message sent toast detected
+2026-03-31,gmail,Roise Hospitality,gmail_sent,sent,Message sent toast detected
+2026-03-31,gmail,XOTELS Dubai,gmail_sent,sent,Message sent toast detected
+2026-03-31,gmail,Royal Ambassador,gmail_sent,sent,Message sent toast detected
+2026-03-31,partner_form,Asksuite,form_submit,failed,Public partner form returned server error after valid field submission
+2026-03-31,gmail,TIME Hotels,gmail_sent,sent,Sent targeted hotel-group outreach to welcome@timehotels.com
+2026-03-31,gmail,Rotana,gmail_sent,sent,Sent targeted corporate outreach to head.office@rotana.com
+2026-03-31,gmail,City Seasons Hotels,gmail_sent,sent,Sent targeted hotel-group outreach to info@cityseasonshotels.com
+2026-03-31,gmail,Central Hotels,gmail_sent,sent,Sent targeted hotel-group outreach to info@central-hotels.com
+2026-03-31,gmail,HMH,gmail_sent,sent,Sent targeted hotel-group outreach to central.reservations@hmhhotelgroup.com
+2026-03-31,gmail,Shaza Hotels,gmail_sent,sent,Sent targeted hotel-group outreach to info@shazahotels.com
+2026-03-31,gmail,DAMAC Hotels and Resorts,gmail_sent,sent,Sent targeted hotel-group outreach to cro@damacmaison.com
+2026-03-31,gmail,Sunset Hospitality Group,gmail_sent,sent,Sent targeted hospitality-group outreach to info@sunsethospitality.com
+2026-03-31,gmail,Rove Hotels,gmail_sent,sent,Sent targeted hotel-group outreach to hello@rovehotels.com
+2026-03-31,contact_form,Amsa Hospitality,form_submit,sent,Submitted public contact form with hotel AI pilot message
+2026-03-31,gmail,Roise Hospitality,delivery_notice,failed,Bounce received: address not found for info@roisehotels.com
+2026-03-31,gmail,TTK Holding Hotel Management,delivery_notice,failed,Bounce received: remote server misconfigured for admin@ttkbahrain.com
+2026-03-31,mail,Bora Hospitality,mail_sent,sent,Sent white-label outreach from Apple Mail to manoj@borahospitality.com
+2026-03-31,mail,INHOCO,mail_send_attempt,failed,Apple Mail send attempt timed out for info@inhoco.com
+2026-03-31,gmail,INHOCO,gmail_sent,sent,Sent white-label outreach from Gmail to info@inhoco.com via fresh CDP tab
+2026-03-31,gmail,August Hospitality,gmail_sent,sent,Sent white-label outreach from Gmail to info@augusthc.com via fresh CDP tab
+2026-03-31,gmail,The Hospitality Network,gmail_sent,sent,Sent white-label outreach from Gmail to info@t-h-n.com via fresh CDP tab

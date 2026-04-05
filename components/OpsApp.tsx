@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { User, Property, ReservationStatus } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePms } from '../services/kernel/persistence';
-import { Command, UsersRound, ConciergeBell, Wallet, Settings, Sparkles, Wine, Menu, Zap, BedDouble, Truck, MessageSquare, Terminal as TerminalIcon, Wrench, Calendar, Activity, Brain, LayoutDashboard, LogOut, User as UserIcon, Shield, BookOpen, ChevronDown } from 'lucide-react';
+import { Command, UsersRound, ConciergeBell, Wallet, Settings, Sparkles, Wine, Menu, Zap, BedDouble, Truck, MessageSquare, Terminal as TerminalIcon, Wrench, Calendar, Activity, Brain, LayoutDashboard, LogOut, User as UserIcon, Shield, BookOpen, ChevronDown, TrendingUp, DollarSign, BarChart3, Building2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import FrontDesk from './pms/FrontDesk';
 import Housekeeping from './pms/Housekeeping';
@@ -22,8 +22,12 @@ import BrandStandards from './modules/BrandStandards';
 import AICommandCenter from './modules/AICommandCenter';
 import NightAudit from './modules/NightAudit';
 import GroupManagement from './modules/GroupManagement';
+import SalesMarketingDashboard from './departments/sales/SalesMarketingDashboard';
 import { botEngine } from '../services/kernel/systemBridge';
 import ConfigurationHub from './configuration/ConfigurationHub';
+import YieldDashboard from './revenue/YieldDashboard';
+import RateCalendar from './revenue/RateCalendar';
+import DemandAnalysis from './revenue/DemandAnalysis';
 
 import { registerCoreModules } from '../services/kernel/moduleRegistry';
 import { predictiveEngine } from '../services/intelligence/predictiveEngine';
@@ -42,13 +46,13 @@ const NavItem = ({ icon, label, active = false, expanded = true, onClick }: { ic
   <button
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${active
-      ? 'bg-violet-500/10 border border-violet-500/20 text-violet-400'
+      ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400'
       : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/40 border border-transparent'
       }`}
   >
-    <div className={`relative z-10 transition-all duration-300 ${active ? 'scale-105 text-violet-400' : 'group-hover:scale-105'}`}>{icon}</div>
-    {expanded && <span className={`text-[11px] font-semibold tracking-wide whitespace-nowrap transition-colors ${active ? 'text-violet-300' : ''}`}>{label}</span>}
-    {active && <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_6px_#a78bfa]"></div>}
+    <div className={`relative z-10 transition-all duration-300 ${active ? 'scale-105 text-sky-400' : 'group-hover:scale-105'}`}>{icon}</div>
+    {expanded && <span className={`text-[11px] font-semibold tracking-wide whitespace-nowrap transition-colors ${active ? 'text-sky-300' : ''}`}>{label}</span>}
+    {active && <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_6px_#38bdf8]"></div>}
   </button>
 );
 
@@ -124,6 +128,7 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
     core: true,
     operations: true,
     intelligence: true,
+    revenue: true,
     back_office: false,
     infrastructure: false,
     brand: true,
@@ -171,6 +176,10 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
     { id: 'group_management', label: 'Group Management' },
     { id: 'brand_standards', label: 'Brand Standards' },
     { id: 'ai_command_center', label: 'AI Command Center' },
+    { id: 'yield_dashboard', label: 'Yield Management' },
+    { id: 'rate_calendar', label: 'Rate Calendar' },
+    { id: 'demand_analysis', label: 'Demand Analysis' },
+    { id: 'sales_marketing', label: 'Sales & Marketing' },
     { id: 'configuration', label: 'Configuration' },
     { id: 'terminal', label: 'Terminal' },
   ]), []);
@@ -273,7 +282,7 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
             </button>
             <button
               onClick={() => setActiveModule('ai_command_center')}
-              className="px-3 py-2 bg-violet-600 rounded-xl text-[11px] font-bold text-white hover:bg-violet-500 transition"
+              className="px-3 py-2 bg-sky-600 rounded-xl text-[11px] font-bold text-white hover:bg-sky-500 transition"
             >
               AI Command Center
             </button>
@@ -405,7 +414,11 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
       case 'ai_command_center': return <AICommandCenter />;
       case 'night_audit': return <NightAudit />;
       case 'group_management': return <GroupManagement />;
+      case 'sales_marketing': return <SalesMarketingDashboard />;
       case 'configuration': return <ConfigurationHub />;
+      case 'yield_dashboard': return <YieldDashboard />;
+      case 'rate_calendar': return <RateCalendar />;
+      case 'demand_analysis': return <DemandAnalysis />;
       default: return renderDashboard();
     }
   };
@@ -463,8 +476,15 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
         {/* Header */}
         <div className="h-16 flex items-center justify-between px-5 border-b border-white/5 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-violet-900/30">S</div>
-            {sidebarExpanded && <span className="font-semibold text-base text-zinc-100 tracking-tight">Singularity</span>}
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-sky-900/30">
+              <Building2 size={18} />
+            </div>
+            {sidebarExpanded && (
+              <div className="flex flex-col leading-tight">
+                <span className="font-bold text-[11px] text-sky-400 tracking-widest uppercase">TravelBook</span>
+                <span className="font-semibold text-xs text-zinc-300 tracking-tight">Hotels OS</span>
+              </div>
+            )}
           </div>
           <button
             onClick={() => setSidebarExpanded(!sidebarExpanded)}
@@ -503,12 +523,22 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
             <NavItem icon={<Sparkles size={18} />} label="Autonomic Core" expanded={sidebarExpanded} active={activeModule === 'suggestions'} onClick={() => { setActiveModule('suggestions'); setMobileMenuOpen(false); }} />
           </NavSection>
 
+          {/* Revenue Management */}
+          {(['GM', 'Manager', 'Finance', 'GENERAL_MANAGER', 'DIRECTOR_OPS', 'FINANCE_MANAGER', 'REVENUE_MANAGER'].includes(activeRole)) && (
+            <NavSection label="Revenue" expanded={expandedSections.revenue} onToggle={() => toggleSection('revenue')} sidebarExpanded={sidebarExpanded}>
+              <NavItem icon={<TrendingUp size={18} />} label="Yield Management" expanded={sidebarExpanded} active={activeModule === 'yield_dashboard'} onClick={() => { setActiveModule('yield_dashboard'); setMobileMenuOpen(false); }} />
+              <NavItem icon={<DollarSign size={18} />} label="Rate Calendar" expanded={sidebarExpanded} active={activeModule === 'rate_calendar'} onClick={() => { setActiveModule('rate_calendar'); setMobileMenuOpen(false); }} />
+              <NavItem icon={<BarChart3 size={18} />} label="Demand Analysis" expanded={sidebarExpanded} active={activeModule === 'demand_analysis'} onClick={() => { setActiveModule('demand_analysis'); setMobileMenuOpen(false); }} />
+            </NavSection>
+          )}
+
           {/* Back Office */}
           {(['GM', 'Manager', 'Finance', 'GENERAL_MANAGER', 'DIRECTOR_OPS', 'FINANCE_MANAGER'].includes(activeRole)) && (
             <NavSection label="Back Office" expanded={expandedSections.back_office} onToggle={() => toggleSection('back_office')} sidebarExpanded={sidebarExpanded}>
               <NavItem icon={<Wallet size={18} />} label="Finance" expanded={sidebarExpanded} active={activeModule === 'finance'} onClick={() => { setActiveModule('finance'); setMobileMenuOpen(false); }} />
               <NavItem icon={<UsersRound size={18} />} label="Human Capital" expanded={sidebarExpanded} active={activeModule === 'hr'} onClick={() => { setActiveModule('hr'); setMobileMenuOpen(false); }} />
               <NavItem icon={<Truck size={18} />} label="Procurement" expanded={sidebarExpanded} active={activeModule === 'procurement'} onClick={() => { setActiveModule('procurement'); setMobileMenuOpen(false); }} />
+              <NavItem icon={<TrendingUp size={18} />} label="Sales & Marketing" expanded={sidebarExpanded} active={activeModule === 'sales_marketing'} onClick={() => { setActiveModule('sales_marketing'); setMobileMenuOpen(false); }} />
             </NavSection>
           )}
 
@@ -542,7 +572,7 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
             <div className="space-y-2">
               {/* User Profile */}
               <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500/20 to-indigo-500/20 border border-violet-500/30 flex items-center justify-center text-violet-400">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-500/20 to-cyan-500/20 border border-sky-500/30 flex items-center justify-center text-sky-400">
                   <UserIcon size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -562,7 +592,7 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
             </div>
           ) : (
             <div className="space-y-2">
-              <button className="w-full p-3 flex justify-center rounded-xl bg-zinc-900/50 border border-zinc-800/50 text-violet-400">
+              <button className="w-full p-3 flex justify-center rounded-xl bg-zinc-900/50 border border-zinc-800/50 text-sky-400">
                 <UserIcon size={16} />
               </button>
               <button
@@ -582,7 +612,7 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
 
         {/* Floating Mobile Trigger */}
         <button
-          className="lg:hidden absolute top-4 left-4 z-[90] p-3 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl text-violet-400"
+          className="lg:hidden absolute top-4 left-4 z-[90] p-3 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl text-sky-400"
           onClick={() => setMobileMenuOpen(true)}
         >
           <Menu size={20} />
@@ -604,3 +634,10 @@ const OpsApp: React.FC<OpsAppProps> = (props) => (
 );
 
 export default OpsApp;
+t default OpsApp;
+sApp;
+p;
+;
+sApp;
+p;
+p;

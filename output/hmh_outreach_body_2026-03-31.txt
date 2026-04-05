@@ -1,0 +1,14 @@
+Hi HMH team,
+
+HMH already operates across the Middle East with a strong focus on hotel management and branded guest experience, which makes it a strong fit for an AI layer that supports both revenue capture and staff workload reduction.
+
+I build hotel-specific AI pilots that help properties capture reservation demand after hours, answer repeat guest questions faster, route service requests into operations, and surface paid upsells like early check-in, room upgrades, late checkout, breakfast, parking, and spa add-ons.
+
+I already have a hotel operations stack running with concierge logic, guest request routing, payments, and property workflows. I am offering a fixed-scope 14-day pilot for groups that want a faster path to direct revenue and reduced front desk load without a long implementation cycle.
+
+For HMH, I would position this as a portfolio pilot for after-hours reservations, guest messaging, and paid upsells.
+
+If useful, I can send a short 3-point pilot outline tailored to your properties this week.
+
+Best,
+Rumed Sodimana

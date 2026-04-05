@@ -17,6 +17,10 @@ import PayrollEngine from './PayrollEngine';
 import PerformanceHub from './PerformanceHub';
 import TransferManager from './TransferManager';
 import OffboardingFlow from './OffboardingFlow';
+import RecruitmentPipeline from './RecruitmentPipeline';
+import TrainingDevelopment from './TrainingDevelopment';
+import OKRGoals from './OKRGoals';
+import EngagementHub from './EngagementHub';
 import { subscribeToItems } from '../../services/kernel/firestoreService';
 import { botEngine } from '../../services/kernel/systemBridge';
 import { usePms } from '../../services/kernel/persistence';
@@ -27,7 +31,7 @@ import { useInspector } from '../../context/InspectorContext';
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 type HRTab = 'Overview' | 'Directory' | 'Roster' | 'Attendance' | 'Leave'
     | 'Payroll' | 'Performance' | 'Transfers' | 'Offboarding'
-    | 'Recruitment' | 'Reports';
+    | 'Recruitment' | 'Training' | 'OKRs' | 'Engagement' | 'Reports';
 
 const TABS: { id: HRTab; label: string; icon: React.ReactNode }[] = [
     { id: 'Overview', label: 'Overview', icon: <Activity className="w-3.5 h-3.5" /> },
@@ -40,6 +44,9 @@ const TABS: { id: HRTab; label: string; icon: React.ReactNode }[] = [
     { id: 'Transfers', label: 'Transfers', icon: <ArrowLeftRight className="w-3.5 h-3.5" /> },
     { id: 'Offboarding', label: 'Exits', icon: <LogOut className="w-3.5 h-3.5" /> },
     { id: 'Recruitment', label: 'Recruit', icon: <UserPlus className="w-3.5 h-3.5" /> },
+    { id: 'Training', label: 'Training', icon: <GraduationCap className="w-3.5 h-3.5" /> },
+    { id: 'OKRs', label: 'OKRs', icon: <Target className="w-3.5 h-3.5" /> },
+    { id: 'Engagement', label: 'Engage', icon: <Zap className="w-3.5 h-3.5" /> },
     { id: 'Reports', label: 'Reports', icon: <BarChart2 className="w-3.5 h-3.5" /> },
 ];
 
@@ -228,13 +235,10 @@ const HRDashboard: React.FC = () => {
             case 'Performance': return <PerformanceHub staff={staffList} />;
             case 'Transfers': return <TransferManager staff={staffList} />;
             case 'Offboarding': return <OffboardingFlow staff={staffList} />;
-            case 'Recruitment': return (
-                <div className="flex flex-col items-center justify-center h-full text-zinc-600">
-                    <UserPlus className="w-16 h-16 mb-4 opacity-20" />
-                    <div className="text-lg font-light text-zinc-400 mb-2">Recruitment Module</div>
-                    <p className="text-sm text-center max-w-sm">Job postings, application tracking, interview scheduling, and automated offer letters. <br /><span className="text-violet-400">Integrated with the Hire Wizard in the Staff Directory.</span></p>
-                </div>
-            );
+            case 'Recruitment': return <RecruitmentPipeline />;
+            case 'Training': return <TrainingDevelopment />;
+            case 'OKRs': return <OKRGoals />;
+            case 'Engagement': return <EngagementHub />;
             case 'Reports': return (
                 <UniversalReportCenter defaultCategory="HumanResources" />
             );

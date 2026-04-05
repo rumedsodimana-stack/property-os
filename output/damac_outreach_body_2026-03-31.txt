@@ -1,0 +1,14 @@
+Hi DAMAC Hotels and Resorts team,
+
+Your serviced apartment and hotel portfolio is a strong setup for an AI pilot focused on direct booking recovery, guest messaging, and monetizable add-ons across multiple properties.
+
+I build hotel-specific AI pilots that help properties capture reservation demand after hours, answer repeat guest questions faster, route service requests into operations, and surface paid upsells like early check-in, room upgrades, late checkout, breakfast, parking, and spa add-ons.
+
+I already have a hotel operations stack running with concierge logic, guest request routing, payments, and property workflows. I am offering a fixed-scope 14-day pilot for groups that want a faster path to direct revenue and reduced front desk load without a long implementation cycle.
+
+For DAMAC Hotels and Resorts, I would position this as a portfolio pilot for guest-response automation and ancillary revenue capture.
+
+If useful, I can send a short 3-point pilot outline tailored to your properties this week.
+
+Best,
+Rumed Sodimana

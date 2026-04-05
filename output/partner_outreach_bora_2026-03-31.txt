@@ -1,0 +1,12 @@
+Hi Manoj,
+
+I build hotel-specific AI pilot deployments that help properties recover missed reservation demand after hours, answer repeat guest questions faster, route service requests into operations, and drive paid upsells like early check-in, room upgrades, late checkout, breakfast, parking, and spa add-ons.
+
+Bora Hospitality positions itself as a Dubai hospitality consultancy focused on launching and improving profitable hospitality businesses. That makes me think there could be a useful white-label or referral fit when hotel owners or operators in your pipeline want an AI reservations and concierge layer without a heavy internal build.
+
+I already have a hotel operations stack running with concierge logic, guest request routing, payments, and property workflows. My current offer is a fixed-scope 14-day pilot that can be positioned around direct-booking recovery, staff load reduction, and ancillary revenue.
+
+If useful, I can send a short 3-point outline showing how this could fit into a client engagement you already manage.
+
+Best,
+Rumed Sodimana

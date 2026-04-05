@@ -1,0 +1,28 @@
+date,lane,organization,stage,channel,expected_low_usd,expected_high_usd,notes
+2026-03-31,hotel_pilot,Chic & Unique Hotels Group,outreach_sent,gmail,15000,25000,Initial hotel AI pilot outreach sent
+2026-03-31,hotel_pilot,Areen Hospitality,outreach_sent,gmail,15000,25000,Initial hotel AI pilot outreach sent
+2026-03-31,hotel_pilot,Gulf Hotels Group,outreach_sent,gmail,25000,35000,Initial hotel AI pilot outreach sent
+2026-03-31,hotel_pilot,Al Watani Hotel and Restaurant Management,outreach_sent,gmail,10000,20000,Initial hotel AI pilot outreach sent
+2026-03-31,hotel_pilot,TTK Holding Hotel Management,outreach_sent,gmail,10000,20000,Initial hotel AI pilot outreach sent
+2026-03-31,hotel_pilot,Habara Group,outreach_sent,gmail,10000,20000,Second hotel batch sent
+2026-03-31,hotel_pilot,Reef Boutique Hotel,outreach_sent,gmail,10000,15000,Second hotel batch sent
+2026-03-31,hotel_pilot,Aleph Hospitality,outreach_sent,gmail,25000,35000,Second hotel batch sent
+2026-03-31,hotel_pilot,Jannah Hotels & Resorts,outreach_sent,gmail,15000,25000,Second hotel batch sent
+2026-03-31,hotel_pilot,Roise Hospitality,outreach_sent,gmail,15000,25000,Second hotel batch sent
+2026-03-31,partner,XOTELS Dubai,outreach_sent,gmail,5000,20000,Partnership and white-label angle
+2026-03-31,hotel_pilot,Royal Ambassador,outreach_sent,gmail,10000,20000,Second hotel batch sent
+2026-03-31,hotel_pilot,TIME Hotels,outreach_sent,gmail,15000,30000,Targeted one-off hotel group outreach
+2026-03-31,hotel_pilot,Rotana,outreach_sent,gmail,20000,40000,Targeted one-off corporate outreach
+2026-03-31,partner,Asksuite,partner_attempted,public_form,0,0,Partner form attempted but site returned server error
+2026-03-31,hotel_pilot,City Seasons Hotels,outreach_sent,gmail,15000,30000,Third hotel batch sent
+2026-03-31,hotel_pilot,Central Hotels,outreach_sent,gmail,15000,30000,Third hotel batch sent
+2026-03-31,hotel_pilot,HMH,outreach_sent,gmail,20000,35000,Third hotel batch sent
+2026-03-31,hotel_pilot,Shaza Hotels,outreach_sent,gmail,20000,35000,Third hotel batch sent
+2026-03-31,hotel_pilot,DAMAC Hotels and Resorts,outreach_sent,gmail,20000,40000,Third hotel batch sent
+2026-03-31,hotel_pilot,Sunset Hospitality Group,outreach_sent,gmail,15000,30000,Fourth hotel batch sent
+2026-03-31,hotel_pilot,Rove Hotels,outreach_sent,gmail,15000,30000,Fourth hotel batch sent
+2026-03-31,hotel_pilot,Amsa Hospitality,outreach_sent,contact_form,15000,30000,Public contact form submitted
+2026-03-31,partner,Bora Hospitality,outreach_sent,mail,5000,20000,Apple Mail outreach sent for white-label or referral fit
+2026-03-31,partner,INHOCO,outreach_sent,gmail,5000,20000,Gmail outreach sent for white-label or referral fit
+2026-03-31,partner,August Hospitality,outreach_sent,gmail,5000,20000,Gmail outreach sent for white-label or referral fit
+2026-03-31,partner,The Hospitality Network,outreach_sent,gmail,5000,20000,Gmail outreach sent for white-label or referral fit

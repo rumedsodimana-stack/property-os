@@ -95,6 +95,9 @@ const WebsiteLanding: React.FC = () => {
           </a>
           <nav className="ws-links" aria-label="Primary">
             <a href="#solutions">Solutions</a>
+            <a href="/hotel-pilot">Pilot</a>
+            <a href="/automation-sprints">Automation</a>
+            <a href="/bounty-lab">Bounties</a>
             <a href="#pricing">Pricing</a>
             <a href="#buyers">Buyers</a>
             <a href="#trust">Trust</a>
@@ -116,12 +119,12 @@ const WebsiteLanding: React.FC = () => {
                 Hotel Singularity OS brings operations, revenue control, and human-safe AI into one system with pricing set below typical market software cost.
               </p>
               <div className="ws-hero-actions">
-                <a href="/app" className="ws-btn">
-                  Open Latest App
+                <a href="/hotel-pilot" className="ws-btn">
+                  See 14-Day Pilot
                   <ArrowRight size={16} />
                 </a>
-                <a href="/theme-gallery" className="ws-btn ws-btn-ghost">
-                  Compare Themes
+                <a href="/app" className="ws-btn ws-btn-ghost">
+                  Open Latest App
                 </a>
               </div>
               <div className="ws-hero-proof">
@@ -279,11 +282,11 @@ const WebsiteLanding: React.FC = () => {
           <div className="ws-shell ws-cta-card">
             <div>
               <p className="ws-kicker">Next step</p>
-              <h2>See the current app, then choose the flagship theme direction.</h2>
+              <h2>Lead with one of the two revenue lanes, then show the product depth behind them.</h2>
             </div>
             <div className="ws-cta-actions">
-              <a href="/app" className="ws-btn">Open Latest App</a>
-              <a href="/theme-gallery" className="ws-btn ws-btn-ghost">Review All Themes</a>
+              <a href="/hotel-pilot" className="ws-btn">View Pilot Offer</a>
+              <a href="/automation-sprints" className="ws-btn ws-btn-ghost">Automation Sprints</a>
             </div>
           </div>
         </section>

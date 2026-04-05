@@ -1,0 +1,12 @@
+Hi The Hospitality Network team,
+
+I build hotel-specific AI pilot deployments that help properties recover missed reservation demand after hours, answer repeat guest questions faster, route service requests into operations, and drive paid upsells like early check-in, room upgrades, late checkout, breakfast, parking, and spa add-ons.
+
+Your consultancy page emphasizes helping suppliers and teams build relationships with active decision makers across hundreds of hospitality projects in the Middle East. That feels like a strong fit for a referral or white-label relationship when hotel stakeholders in your pipeline want a practical AI reservations and concierge layer tied to revenue and operations.
+
+I already have a hotel operations stack running with concierge logic, guest request routing, payments, and property workflows. My current offer is a fixed-scope 14-day pilot positioned around direct-booking recovery, reduced front desk load, and upsell capture.
+
+If helpful, I can send a short 3-point pilot outline that could sit alongside your consultancy conversations.
+
+Best,
+Rumed Sodimana

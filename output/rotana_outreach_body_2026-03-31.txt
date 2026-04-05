@@ -1,0 +1,12 @@
+Hi Rotana team,
+
+I’m reaching out with a focused hotel AI pilot idea for properties and hotel groups that want to capture more direct reservation demand, reduce repetitive guest-service load, and increase paid upsells.
+
+I build hotel-specific AI pilots that help hotels answer after-hours reservation inquiries, automate guest messaging, route requests into operations, and present paid add-ons such as upgrades, early check-in, late checkout, breakfast, parking, and similar offers.
+
+I already have a hotel operations stack running with concierge logic, request routing, payments, and property workflows. For Rotana, I would position this as a tightly scoped pilot for one property or one business unit first, with clear KPIs around response time, direct demand capture, and upsell activity.
+
+If there is a more appropriate contact for digital, commercial, or guest-experience innovation, I’d be glad to send the outline there as well.
+
+Best,
+Rumed Sodimana

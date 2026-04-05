@@ -14,6 +14,9 @@ import { AppearanceProvider } from './src/context/AppearanceContext';
 import InspectorShell from './components/shared/InspectorShell';
 import BrandColorsSync from './BrandColorsSync';
 import WebsiteLanding from './components/WebsiteLanding';
+import HotelPilotLanding from './components/HotelPilotLanding';
+import FreelanceAutomationLanding from './components/FreelanceAutomationLanding';
+import BountyLabLanding from './components/BountyLabLanding';
 import ThemeGallery from './components/ThemeGallery';
 
 type AppScopeState = { hasError: boolean; message: string };
@@ -47,7 +50,7 @@ class AppScopeErrorBoundary extends React.Component<AppScopeProps, AppScopeState
             </pre>
             <button
               onClick={() => this.setState({ hasError: false, message: '' })}
-              className="px-4 py-2 bg-violet-600 text-white rounded-xl text-sm hover:bg-violet-500 transition"
+              className="px-4 py-2 bg-sky-600 text-white rounded-xl text-sm hover:bg-sky-500 transition"
             >
               Retry
             </button>
@@ -98,7 +101,7 @@ const OpsApp = React.lazy(() => import('./components/OpsApp'));
 
 const LoadingScreen = () => (
   <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-    <div className="w-12 h-12 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+    <div className="w-12 h-12 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
   </div>
 );
 
@@ -154,19 +157,19 @@ const LoginScreen: React.FC = () => {
       <div className="z-10 text-center space-y-8 w-full max-w-md">
         <div className="flex flex-col items-center space-y-6">
           <div className="relative group">
-            <div className="absolute inset-0 bg-violet-500 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-700" />
+            <div className="absolute inset-0 bg-sky-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-700" />
             <div className="relative p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-3xl shadow-2xl flex items-center justify-center animate-pulse" style={{ animationDuration: '4s' }}>
-              <Command className="w-16 h-16 text-white drop-shadow-[0_0_15px_rgba(139,92,246,0.5)]" />
+              <Command className="w-16 h-16 text-white drop-shadow-[0_0_15px_rgba(8,145,178,0.5)]" />
             </div>
           </div>
           <div>
-            <h1 className="text-6xl md:text-7xl font-light text-transparent bg-clip-text bg-gradient-to-br from-white via-zinc-200 to-zinc-500 tracking-tighter drop-shadow-sm">
-              SINGULARITY
+            <h1 className="text-5xl md:text-6xl font-light text-transparent bg-clip-text bg-gradient-to-br from-white via-zinc-200 to-zinc-500 tracking-tighter drop-shadow-sm">
+              TRAVELBOOK
             </h1>
-            <p className="text-violet-300 text-[10px] md:text-xs tracking-[0.4em] uppercase font-bold mt-3 opacity-80 flex items-center justify-center gap-2">
-              <span className="w-8 h-px bg-violet-500/50" />
-              Operating System v2.0
-              <span className="w-8 h-px bg-violet-500/50" />
+            <p className="text-sky-400 text-[10px] md:text-xs tracking-[0.4em] uppercase font-bold mt-3 opacity-80 flex items-center justify-center gap-2">
+              <span className="w-8 h-px bg-sky-500/50" />
+              Hotels OS
+              <span className="w-8 h-px bg-sky-500/50" />
             </p>
           </div>
         </div>
@@ -175,17 +178,17 @@ const LoginScreen: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
 
           <h2 className="text-zinc-400 mb-8 font-medium text-[11px] uppercase tracking-[0.3em] flex items-center justify-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-violet-400" />
+            <ShieldCheck className="w-4 h-4 text-sky-400" />
             Operator Authentication
           </h2>
 
           <div className="space-y-5 mb-8 relative z-10">
             <div className="group/input">
-              <label className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest block mb-2 transition-colors group-focus-within/input:text-violet-400">
+              <label className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest block mb-2 transition-colors group-focus-within/input:text-sky-400">
                 Employee ID
               </label>
               <div className="relative">
-                <div className="absolute inset-0 bg-violet-500/20 rounded-xl blur-lg opacity-0 group-focus-within/input:opacity-100 transition duration-500" />
+                <div className="absolute inset-0 bg-sky-500/20 rounded-xl blur-lg opacity-0 group-focus-within/input:opacity-100 transition duration-500" />
                 <input
                   id="employee-id-input"
                   type="text"
@@ -194,17 +197,17 @@ const LoginScreen: React.FC = () => {
                   autoComplete="username"
                   onChange={(e) => setEmployeeId(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="relative w-full bg-black/60 border border-zinc-800 rounded-xl p-4 text-sm text-white placeholder-zinc-700 focus:outline-none focus:border-violet-500/50 focus:bg-zinc-900/80 transition-all duration-300"
+                  className="relative w-full bg-black/60 border border-zinc-800 rounded-xl p-4 text-sm text-white placeholder-zinc-700 focus:outline-none focus:border-sky-500/50 focus:bg-zinc-900/80 transition-all duration-300"
                 />
               </div>
             </div>
 
             <div className="group/input">
-              <label className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest block mb-2 transition-colors group-focus-within/input:text-violet-400">
+              <label className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest block mb-2 transition-colors group-focus-within/input:text-sky-400">
                 Access PIN
               </label>
               <div className="relative">
-                <div className="absolute inset-0 bg-violet-500/20 rounded-xl blur-lg opacity-0 group-focus-within/input:opacity-100 transition duration-500" />
+                <div className="absolute inset-0 bg-sky-500/20 rounded-xl blur-lg opacity-0 group-focus-within/input:opacity-100 transition duration-500" />
                 <input
                   id="pin-input"
                   type={showPin ? 'text' : 'password'}
@@ -213,7 +216,7 @@ const LoginScreen: React.FC = () => {
                   autoComplete="current-password"
                   onChange={(e) => setPin(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="relative w-full bg-black/60 border border-zinc-800 rounded-xl p-4 pr-12 text-sm text-white placeholder-zinc-700 focus:outline-none focus:border-violet-500/50 focus:bg-zinc-900/80 transition-all duration-300 tracking-widest"
+                  className="relative w-full bg-black/60 border border-zinc-800 rounded-xl p-4 pr-12 text-sm text-white placeholder-zinc-700 focus:outline-none focus:border-sky-500/50 focus:bg-zinc-900/80 transition-all duration-300 tracking-widest"
                 />
                 <button
                   type="button"
@@ -239,10 +242,10 @@ const LoginScreen: React.FC = () => {
             disabled={submitting || loading}
             className="relative w-full group/btn overflow-hidden rounded-xl"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-transform duration-500 group-hover/btn:scale-105" />
+            <div className="absolute inset-0 bg-gradient-to-r from-sky-600 to-cyan-500 transition-transform duration-500 group-hover/btn:scale-105" />
             <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300" />
 
-            <div className="relative w-full flex justify-center items-center py-4 px-6 text-white font-bold tracking-wide transition-all shadow-lg shadow-violet-900/40">
+            <div className="relative w-full flex justify-center items-center py-4 px-6 text-white font-bold tracking-wide transition-all shadow-lg shadow-sky-900/40">
               {submitting ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
@@ -260,7 +263,7 @@ const LoginScreen: React.FC = () => {
 
         <div className="flex items-center justify-center gap-2 text-[9px] text-slate-400 font-semibold tracking-widest uppercase mt-8">
           <ShieldCheck className="w-3 h-3" />
-          Hotel Singularity OS
+          TravelBook Hotels OS
         </div>
       </div>
     </div>
@@ -397,6 +400,9 @@ const App: React.FC = () => {
   }, [path]);
 
   const isWebsiteRoute = path === '/';
+  const isHotelPilotRoute = path === '/hotel-pilot' || path.startsWith('/hotel-pilot/') || path === '/pilot' || path.startsWith('/pilot/');
+  const isAutomationRoute = path === '/automation-sprints' || path.startsWith('/automation-sprints/') || path === '/ai-automation' || path.startsWith('/ai-automation/');
+  const isBountyRoute = path === '/bounty-lab' || path.startsWith('/bounty-lab/') || path === '/bug-bounty-lab' || path.startsWith('/bug-bounty-lab/');
   const isThemeGalleryRoute = path === '/theme-gallery' || path.startsWith('/theme-gallery/') || path === '/themes' || path.startsWith('/themes/');
   const isGuestRoute = path === '/guest' || path.startsWith('/guest/');
   const isAppRoute = path === '/app' || path.startsWith('/app/');
@@ -407,6 +413,12 @@ const App: React.FC = () => {
       <BrandColorsSync />
       {isWebsiteRoute ? (
         <WebsiteLanding />
+      ) : isHotelPilotRoute ? (
+        <HotelPilotLanding />
+      ) : isAutomationRoute ? (
+        <FreelanceAutomationLanding />
+      ) : isBountyRoute ? (
+        <BountyLabLanding />
       ) : isThemeGalleryRoute ? (
         <ThemeGallery />
       ) : isGuestRoute || isAppRoute ? (
@@ -426,3 +438,6 @@ const App: React.FC = () => {
 };
 
 export default App;
+p;
+p;
+p;

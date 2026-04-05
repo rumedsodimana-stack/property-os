@@ -1,0 +1,12 @@
+Hi TIME Hotels team,
+
+I’m reaching out with a practical AI pilot idea for hotel groups that want to recover missed reservation demand, reduce front desk load, and drive upsells without a long implementation cycle.
+
+I build hotel-specific AI pilots that handle guest questions after hours, route service requests into operations, and surface paid add-ons like early check-in, late checkout, room upgrades, breakfast, parking, and spa offers.
+
+I already have a hotel operations stack running with concierge logic, guest request routing, payments, and property workflows. For a group like TIME Hotels, I would position this as a multi-property pilot for direct-booking recovery, guest messaging automation, and upsell revenue.
+
+If useful, I can send a short 3-point pilot outline tailored to one property or one small cluster.
+
+Best,
+Rumed Sodimana
