@@ -196,10 +196,15 @@ const OperatorLayout: React.FC<OperatorLayoutProps> = ({
         {/* Header */}
         <div className="h-16 flex items-center justify-between px-5 border-b border-white/5 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-violet-900/30">
-              S
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-teal-900/30">
+              T
             </div>
-            {sidebarExpanded && <span className="font-semibold text-base text-zinc-100 tracking-tight">Singularity</span>}
+            {sidebarExpanded && (
+              <div className="flex flex-col">
+                <span className="font-semibold text-base text-zinc-100 tracking-tight leading-tight">TravelBook Hotel OS</span>
+                <span className="text-[9px] font-bold text-teal-400 tracking-widest uppercase">TravelBook Partner ✦</span>
+              </div>
+            )}
           </div>
           <button
             onClick={() => setSidebarExpanded(!sidebarExpanded)}

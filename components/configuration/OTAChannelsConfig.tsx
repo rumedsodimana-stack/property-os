@@ -221,7 +221,7 @@ const OTAChannelsConfig: React.FC = () => {
                                                     <span className="text-emerald-500">Secured</span>
                                                 </div>
                                                 <div className="font-mono text-xs text-zinc-300 p-2 bg-zinc-900 rounded-lg pr-12 relative overflow-hidden text-ellipsis whitespace-nowrap">
-                                                    https://api.hotelsingularity.com/v1/ota/webhook/{selectedChannel.id}
+                                                    https://api.travelbook.com/v1/hotel-os/ota/webhook/{selectedChannel.id}
                                                 </div>
                                             </div>
                                             <button className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs font-bold text-zinc-300 transition border border-zinc-700/50">

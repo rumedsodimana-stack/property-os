@@ -6,6 +6,13 @@ import { OTAChannel } from '../../services/operations/otaAdapter';
  */
 export const OTA_CHANNELS: OTAChannel[] = [
     {
+        id: 'travelbook',
+        name: 'TravelBook ✦ Native',
+        icon: 'https://raw.githubusercontent.com/rumedsodimana-stack/travelbook/master/public/favicon.ico',
+        status: 'Connected',
+        lastSync: Date.now(),
+    },
+    {
         id: 'booking',
         name: 'Booking.com',
         icon: 'https://cdn.worldvectorlogo.com/logos/bookingcom-1.svg',
