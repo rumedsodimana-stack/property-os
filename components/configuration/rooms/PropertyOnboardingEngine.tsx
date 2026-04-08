@@ -208,9 +208,9 @@ const PropertyOnboardingEngine: React.FC = () => {
                 {/* Content Area */}
                 <div className="col-span-9 bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-[3rem] min-h-[650px] flex flex-col overflow-hidden relative shadow-2xl">
                     <div className="flex-1 p-10 overflow-y-auto">
-                        {currentStep === 1 && <DNAStep data={data.categories} onUpdate={(val) => updateData('categories', val)} />}
-                        {currentStep === 2 && <TraitStep data={data.attributes} onUpdate={(val) => updateData('attributes', val)} />}
-                        {currentStep === 3 && <BlueprintStep data={data} onUpdate={(key, val) => updateData(key as any, val)} />}
+                        <DNAStep isOpen={currentStep === 1} data={data.categories} onUpdate={(val) => updateData('categories', val)} />
+                        <TraitStep isOpen={currentStep === 2} data={data.attributes} onUpdate={(val) => updateData('attributes', val)} />
+                        <BlueprintStep isOpen={currentStep === 3} data={data} onUpdate={(key, val) => updateData(key as any, val)} />
                         {currentStep === 4 && <ReviewStep data={data} />}
                     </div>
 

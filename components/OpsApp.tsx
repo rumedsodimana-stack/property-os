@@ -201,6 +201,26 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (activeModule !== 'dashboard') return;
+    const inHouse = reservations.filter(r => r.status === ReservationStatus.CHECKED_IN).length;
+    const occupancy = rooms.length ? Math.round((inHouse / rooms.length) * 100) : 0;
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const todayRevenue = posOrders.filter(o => o.timestamp >= todayStart.getTime()).reduce((s, o) => s + (o.total ?? 0), 0);
+    const adr = inHouse > 0 ? todayRevenue / inHouse : 0;
+    const revpar = rooms.length > 0 ? todayRevenue / rooms.length : 0;
+    const activeShifts = shifts.filter(s => !s.clockOut).length;
+    const lowStock = inventory.filter(i => i.totalStock <= i.reorderPoint).length;
+    const openPOs = purchaseOrders.filter(po => po.status !== 'Received').length;
+    const openMaintenance = maintenanceTasks.filter(t => t.status !== 'Completed').length;
+    const alerts = [
+      lowStock > 0 ? `${lowStock} inventory items need replenishment` : 'Inventory levels are healthy',
+      openPOs > 0 ? `${openPOs} purchase orders awaiting closure` : 'No pending purchase orders',
+      openMaintenance > 0 ? `${openMaintenance} maintenance tasks open` : 'No pending maintenance tasks',
+    ];
+    setPageContext(`Viewing Dashboard. Property: ${property.name}. Occupancy: ${occupancy}%. ADR: $${adr.toFixed(0)}. RevPAR: $${revpar.toFixed(0)}. Employees on shift: ${activeShifts}. Alerts: ${alerts.join('. ')}`);
+  }, [activeModule, rooms, reservations, posOrders, shifts, inventory, purchaseOrders, maintenanceTasks, property.name, setPageContext]);
+
   const renderDashboard = () => {
     const inHouse = reservations.filter(r => r.status === ReservationStatus.CHECKED_IN).length;
     const occupancy = rooms.length ? Math.round((inHouse / rooms.length) * 100) : 0;
@@ -247,10 +267,6 @@ const OpsAppContent: React.FC<OpsAppProps> = ({ user, property }) => {
         ? `${maintenanceTasks.filter(t => t.status !== 'Completed').length} maintenance tasks open`
         : 'No pending maintenance tasks',
     ];
-
-    useEffect(() => {
-      setPageContext(`Viewing Dashboard. Property: ${property.name}. Occupancy: ${occupancy}%. ADR: $${adr.toFixed(0)}. RevPAR: $${revpar.toFixed(0)}. Employees on shift: ${activeShifts}. Alerts: ${operationalAlerts.join('. ')}`);
-    }, [occupancy, adr, revpar, activeShifts, property.name]);
 
     return (
       <div className="module-container bg-transparent flex flex-col h-full">

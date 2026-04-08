@@ -563,7 +563,7 @@ const SalesMarketingDashboard: React.FC = () => {
             <div key={seg} className="bg-zinc-900/40 border border-white/5 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: SEGMENT_COLORS[seg] || '#8b5cf6' }} />
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: SEGMENT_COLORS[seg as string] || '#8b5cf6' }} />
                   <span className="text-sm font-bold text-zinc-200 capitalize">{seg}</span>
                 </div>
                 <div className="text-xs text-zinc-400 font-semibold">{fmt(totalActual)} / {fmt(totalTarget)} <span className={overall >= 80 ? 'text-emerald-400' : 'text-amber-400'}>({overall}%)</span></div>
@@ -581,7 +581,7 @@ const SalesMarketingDashboard: React.FC = () => {
                       <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-700"
-                          style={{ width: `${Math.min(p, 100)}%`, backgroundColor: SEGMENT_COLORS[seg] || '#8b5cf6' }}
+                          style={{ width: `${Math.min(p, 100)}%`, backgroundColor: SEGMENT_COLORS[seg as string] || '#8b5cf6' }}
                         />
                       </div>
                     </div>

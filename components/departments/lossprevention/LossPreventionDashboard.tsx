@@ -388,11 +388,11 @@ const LossPreventionDashboard: React.FC = () => {
                 </div>
                 <div className="bg-zinc-950/50 border border-zinc-800 rounded-xl p-3">
                   <div className="text-[9px] text-zinc-500 uppercase font-bold">Evidence</div>
-                  <div className="text-xs text-zinc-200 mt-1">{inv.evidenceCollected.length} items</div>
+                  <div className="text-xs text-zinc-200 mt-1">{(inv.evidenceCollected || []).length} items</div>
                 </div>
                 <div className="bg-zinc-950/50 border border-zinc-800 rounded-xl p-3">
                   <div className="text-[9px] text-zinc-500 uppercase font-bold">Interviews</div>
-                  <div className="text-xs text-zinc-200 mt-1">{inv.interviewsConducted.length} conducted</div>
+                  <div className="text-xs text-zinc-200 mt-1">{(inv.interviewsConducted || []).length} conducted</div>
                 </div>
                 <div className="bg-zinc-950/50 border border-zinc-800 rounded-xl p-3">
                   <div className="text-[9px] text-zinc-500 uppercase font-bold">Recovery</div>

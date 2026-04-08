@@ -108,6 +108,7 @@ const WorkflowApprovals: React.FC = () => {
                 const stored = await fetchItems<WorkflowRule>('workflowConfig');
                 if (stored.length > 0) {
                     setRules(stored);
+                    setSelected(stored[0].id);
                 }
             } catch {
                 // Use defaults
@@ -118,7 +119,7 @@ const WorkflowApprovals: React.FC = () => {
         load();
     }, []);
 
-    const selectedRule = rules.find(r => r.id === selected)!;
+    const selectedRule = rules.find(r => r.id === selected) ?? rules[0];;
 
     const toggleApprover = (role: OSRole) => {
         setSaved(false);
@@ -165,6 +166,8 @@ const WorkflowApprovals: React.FC = () => {
             setSaving(false);
         }
     };
+
+    if (!selectedRule) return <div className="text-zinc-500 text-sm p-8">No workflow rules configured.</div>;
 
     return (
         <div className="flex gap-6 h-full animate-fadeIn">

@@ -39,6 +39,7 @@ const TableMapView: React.FC<TableMapViewProps> = ({ selectedOutlet, onOutletCha
     const [showGuestProfile, setShowGuestProfile] = useState(false);
     const [showOutletDropdown, setShowOutletDropdown] = useState(false);
     const [showNewReservation, setShowNewReservation] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
         const unsubscribe = subscribeToItems<DiningReservation>('dining_reservations', (data) => {
@@ -47,14 +48,6 @@ const TableMapView: React.FC<TableMapViewProps> = ({ selectedOutlet, onOutletCha
         });
         return () => unsubscribe();
     }, []);
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
-    }
 
     // Filter reservations by outlet
     const outletReservations = useMemo(() => {
@@ -74,12 +67,19 @@ const TableMapView: React.FC<TableMapViewProps> = ({ selectedOutlet, onOutletCha
 
     // Pagination for tables
     const ITEMS_PER_PAGE = 48;
-    const [currentPage, setCurrentPage] = useState(1);
     const totalPages = Math.ceil(TABLES.length / ITEMS_PER_PAGE);
     const visibleTables = useMemo(() => {
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
         return TABLES.slice(start, start + ITEMS_PER_PAGE);
     }, [TABLES, currentPage]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     // Auto-allocate table based on party size
     const autoAllocateTable = (partySize: number): string | undefined => {

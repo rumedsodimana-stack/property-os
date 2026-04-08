@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Plus, Trash2, Users, BedDouble, Info } from 'lucide-react';
 
 interface DNAStepProps {
+    isOpen?: boolean;
     data: any[];
     onUpdate: (data: any[]) => void;
 }
 
-const DNAStep: React.FC<DNAStepProps> = ({ data, onUpdate }) => {
+const DNAStep: React.FC<DNAStepProps> = ({ isOpen = true, data, onUpdate }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newItem, setNewItem] = useState({
         name: '',
@@ -27,6 +28,8 @@ const DNAStep: React.FC<DNAStepProps> = ({ data, onUpdate }) => {
     const removeCategory = (id: string) => {
         onUpdate(data.filter(c => c.id !== id));
     };
+
+    if (!isOpen) return null;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">

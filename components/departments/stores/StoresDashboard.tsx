@@ -705,7 +705,7 @@ const StoresDashboard: React.FC = () => {
         <div className="bg-zinc-900/40 border border-white/5 rounded-2xl p-5">
           <h3 className="text-sm font-semibold text-zinc-200 mb-4">Inventory by Category</h3>
           <div className="space-y-3">
-            {Object.entries(categoryBreakdown).sort((a, b) => b[1].value - a[1].value).map(([cat, data]) => (
+            {(Object.entries(categoryBreakdown) as [string, { items: number; value: number }][]).sort((a, b) => b[1].value - a[1].value).map(([cat, data]) => (
               <div key={cat} className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1">
                   <span className="text-[10px] text-zinc-300 w-28">{cat}</span>

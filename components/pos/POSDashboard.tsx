@@ -27,12 +27,15 @@ const POSDashboard: React.FC = () => {
     loading
   } = usePms();
 
+  // ─── ALL HOOKS MUST BE HERE BEFORE ANY EARLY RETURNS ───
   const [activeTab, setActiveTab] = useState<'Terminal' | 'TableMap' | 'MenuEng' | 'Inventory' | 'Reports'>('Terminal');
-
-  console.log('[POSDashboard] Rendering with activeTab:', activeTab);
-
-  // Initialize with first outlet if available
   const [selectedOutlet, setSelectedOutlet] = useState<Outlet | null>(null);
+  const [viewMode, setViewMode] = useState<'Grid' | 'List'>('Grid');
+  const [selectedTable, setSelectedTable] = useState<Table | null>(null);
+  const [manualTableNumber, setManualTableNumber] = useState('');
+  const [showOutletDropdown, setShowOutletDropdown] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const { inspect } = useInspector();
 
   useEffect(() => {
     if (outlets.length > 0 && !selectedOutlet) {
@@ -40,14 +43,9 @@ const POSDashboard: React.FC = () => {
     }
   }, [outlets, selectedOutlet]);
 
-  const [viewMode, setViewMode] = useState<'Grid' | 'List'>('Grid');
-  const [selectedTable, setSelectedTable] = useState<Table | null>(null);
-  const [manualTableNumber, setManualTableNumber] = useState('');
-  const [showOutletDropdown, setShowOutletDropdown] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  console.log('[POSDashboard] Rendering with activeTab:', activeTab);
 
-  const { inspect } = useInspector();
-
+  // ─── NOW WE CAN HAVE EARLY RETURNS ───
   if (loading) return <div className="p-10 text-white animate-pulse">Loading POS...</div>;
 
   if (!selectedOutlet) return (

@@ -44,7 +44,7 @@ const TransferManager: React.FC<TransferManagerProps> = ({ staff }) => {
         <div className="flex flex-col h-full gap-6 animate-fadeIn">
             <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-                    <div className="text-2xl font-light text-zinc-100">{staff.filter(s => s.transferHistory.length > 0).length}</div>
+                    <div className="text-2xl font-light text-zinc-100">{staff.filter(s => (s.transferHistory || []).length > 0).length}</div>
                     <div className="text-[9px] text-zinc-600 uppercase font-bold tracking-wider mt-1">Staff Transferred</div>
                 </div>
                 <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">

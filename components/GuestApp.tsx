@@ -305,7 +305,7 @@ const GuestApp: React.FC<GuestAppProps> = ({ user, room: initialRoom, reservatio
 
       {/* Main Content */}
       <div className="px-4 md:px-6 py-4 md:py-6">
-        {activeTab === 'booking' && <BookingEngine onBook={handleBookRoom} />}
+        <BookingEngine isOpen={activeTab === 'booking'} onBook={handleBookRoom} />
         {activeTab === 'home' && renderHome()}
         {activeTab === 'controls' && renderControls()}
         {activeTab === 'concierge' && renderConcierge()}

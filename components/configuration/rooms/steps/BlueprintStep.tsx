@@ -3,11 +3,12 @@ import { Plus, Trash2, Map, Layers, Hash, Info } from 'lucide-react';
 import { OnboardingData } from '../PropertyOnboardingEngine';
 
 interface BlueprintStepProps {
+    isOpen?: boolean;
     data: OnboardingData;
     onUpdate: (key: string, data: any) => void;
 }
 
-const BlueprintStep: React.FC<BlueprintStepProps> = ({ data, onUpdate }) => {
+const BlueprintStep: React.FC<BlueprintStepProps> = ({ isOpen = true, data, onUpdate }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newFloor, setNewFloor] = useState({
         name: '',
@@ -47,6 +48,8 @@ const BlueprintStep: React.FC<BlueprintStepProps> = ({ data, onUpdate }) => {
         onUpdate('floors', data.floors.filter(f => f.id !== floorId));
         onUpdate('rooms', data.rooms.filter(r => r.floorName !== floorName));
     };
+
+    if (!isOpen) return null;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">

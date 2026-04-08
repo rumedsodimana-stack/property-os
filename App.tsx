@@ -63,13 +63,14 @@ class AppScopeErrorBoundary extends React.Component<AppScopeProps, AppScopeState
   }
 }
 
-class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; message: string }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, message: '' };
-  }
+type RootErrState = { hasError: boolean; message: string };
+type RootErrProps = { children: React.ReactNode };
 
-  static getDerivedStateFromError(error: Error) {
+class RootErrorBoundary extends React.Component<RootErrProps, RootErrState> {
+  state: RootErrState = { hasError: false, message: '' };
+  declare props: Readonly<RootErrProps>;
+
+  static getDerivedStateFromError(error: Error): RootErrState {
     return { hasError: true, message: error?.message || 'Unknown runtime error' };
   }
 
@@ -78,21 +79,23 @@ class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, {
   }
 
   render() {
-    if (this.state.hasError) {
+    const state = this.state as RootErrState;
+    const props = this.props as RootErrProps;
+    if (state.hasError) {
       return (
         <div className="min-h-screen bg-black text-zinc-100 flex items-center justify-center p-6">
           <div className="max-w-2xl w-full bg-zinc-900/80 border border-rose-500/30 rounded-2xl p-6">
             <h1 className="text-lg font-semibold text-rose-400 mb-3">App crashed during render</h1>
             <p className="text-sm text-zinc-300 mb-2">Runtime message:</p>
             <pre className="text-xs bg-black/60 border border-zinc-800 rounded-lg p-3 overflow-auto text-rose-300">
-              {this.state.message}
+              {state.message}
             </pre>
             <p className="text-xs text-zinc-500 mt-4">Open browser DevTools Console for full stack trace.</p>
           </div>
         </div>
       );
     }
-    return this.props.children;
+    return props.children;
   }
 }
 
@@ -438,6 +441,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-p;
-p;
-p;

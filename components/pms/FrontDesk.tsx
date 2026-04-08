@@ -828,14 +828,13 @@ const FrontDesk: React.FC = () => {
             {showYield && renderYieldManagement()}
 
             {/* Room Allocation Modal */}
-            {allocationModal.isOpen && allocationModal.reservation && (
-                <RoomAllocationModal
-                    reservation={allocationModal.reservation}
-                    rooms={rooms}
-                    onClose={() => setAllocationModal({ isOpen: false, reservation: null })}
-                    onAssign={handleRoomAssigned}
-                />
-            )}
+            <RoomAllocationModal
+                isOpen={allocationModal.isOpen}
+                reservation={allocationModal.reservation || undefined}
+                rooms={rooms}
+                onClose={() => setAllocationModal({ isOpen: false, reservation: null })}
+                onAssign={handleRoomAssigned}
+            />
 
             {/* V1 Command Header */}
             <div className="module-header glass-panel">

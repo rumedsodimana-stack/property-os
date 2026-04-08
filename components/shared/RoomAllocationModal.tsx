@@ -5,21 +5,23 @@ import { ROOM_TYPES } from '../../services/kernel/config';
 import { X, BedDouble, Check, AlertCircle } from 'lucide-react';
 
 interface RoomAllocationModalProps {
-    reservation: Reservation;
+    isOpen?: boolean;
+    reservation?: Reservation;
     rooms: Room[]; // Now accepting live rooms data
     onClose: () => void;
     onAssign: (roomId: string) => void;
 }
 
-const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({ reservation, rooms, onClose, onAssign }) => {
-    const requestedType = ROOM_TYPES.find(t => t.id === reservation.roomTypeId);
+const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({ isOpen = true, reservation, rooms, onClose, onAssign }) => {
     const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+
+    const requestedType = reservation ? ROOM_TYPES.find(t => t.id === reservation.roomTypeId) : undefined;
 
     // Filter available rooms (Memoized for performance)
     const availableRooms = useMemo(() => {
         return rooms.filter(room => {
             // 1. Must match requested type
-            if (room.typeId !== reservation.roomTypeId) return false;
+            if (room.typeId !== reservation?.roomTypeId) return false;
 
             // 2. Must not be occupied (Simplified for MVP)
             // Available = Not Occupied AND Not Maintenance
@@ -28,7 +30,7 @@ const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({ reservation, 
             // Note: RoomStatus enum values like 'Occupied' or 'Dirty/Departure'
             return !unavailableStatuses.some(status => room.status.includes(status));
         });
-    }, [rooms, reservation.roomTypeId]);
+    }, [rooms, reservation?.roomTypeId]);
 
     const handleAssign = () => {
         if (selectedRoomId) {
@@ -36,6 +38,8 @@ const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({ reservation, 
             onClose();
         }
     };
+
+    if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">

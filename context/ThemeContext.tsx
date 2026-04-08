@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import type { ThemeId } from '../src/themes';
 
-export type AppTheme = 'midnight' | 'ocean' | 'sandstone' | 'aurora' | 'graphite';
+export type AppTheme = ThemeId;
 
 interface ThemeContextValue {
   theme: AppTheme;
@@ -13,7 +14,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<AppTheme>(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as AppTheme | null;
-    return stored || 'midnight';
+    return stored || 'paraiso';
   });
 
   useEffect(() => {

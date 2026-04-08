@@ -90,9 +90,9 @@ const RevenueConfig: React.FC = () => {
                                     )}
                                 </div>
                             </div>
-                            {plan.inclusions.length > 0 && (
+                            {(plan.inclusions || []).length > 0 && (
                                 <div className="flex gap-1 mt-3 flex-wrap">
-                                    {plan.inclusions.map(inc => (
+                                    {(plan.inclusions || []).map(inc => (
                                         <span key={inc.id} className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-[9px] rounded uppercase font-bold tracking-wider">
                                             + {inc.name}
                                         </span>

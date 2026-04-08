@@ -298,15 +298,14 @@ const StaffDirectory: React.FC<StaffDirectoryProps> = ({ staff, onSelectStaff, o
             </div>
 
             {/* Hire Wizard Modal */}
-            {showHireWizard && (
-                <HireWizard
-                    onClose={() => setShowHireWizard(false)}
-                    onComplete={(newMember) => {
-                        onStaffHired(newMember);
-                        setShowHireWizard(false);
-                    }}
-                />
-            )}
+            <HireWizard
+                isOpen={showHireWizard}
+                onClose={() => setShowHireWizard(false)}
+                onComplete={(newMember) => {
+                    onStaffHired(newMember);
+                    setShowHireWizard(false);
+                }}
+            />
         </div>
     );
 };

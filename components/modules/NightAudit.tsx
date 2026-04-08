@@ -85,7 +85,7 @@ export const NightAudit: React.FC = () => {
             businessDate: new Date(run.businessDate),
             startTime: new Date(run.startTime),
             endTime: run.endTime ? new Date(run.endTime) : undefined,
-            steps: run.steps.map((s: any) => ({
+            steps: (run.steps || []).map((s: any) => ({
                 ...s,
                 startTime: new Date(s.startTime),
                 endTime: s.endTime ? new Date(s.endTime) : undefined
@@ -295,7 +295,7 @@ export const NightAudit: React.FC = () => {
 
                             {/* Steps Progress */}
                             <div className="space-y-3">
-                                {currentAudit.steps.map((step, index) => (
+                                {(currentAudit.steps || []).map((step, index) => (
                                     <div key={index} className="flex items-center gap-4">
                                         <div className={`
                                     w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
@@ -390,7 +390,7 @@ export const NightAudit: React.FC = () => {
                                             </span>
 
                                             <span className="text-sm text-zinc-400">
-                                                {audit.steps.length} steps
+                                                {(audit.steps || []).length} steps
                                             </span>
                                         </div>
                                     </div>

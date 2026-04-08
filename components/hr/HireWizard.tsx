@@ -9,6 +9,7 @@ import { addItem, subscribeToItems } from '../../services/kernel/firestoreServic
 import { agentService, AgentDefinition, ALL_CAPABILITIES } from '../../services/intelligence/agentService';
 
 interface HireWizardProps {
+    isOpen?: boolean;
     onClose: () => void;
     onComplete: (member: StaffMember) => void;
 }
@@ -38,7 +39,7 @@ const STEPS = [
     { id: 5, label: 'Confirm', icon: CheckCircle },
 ];
 
-const HireWizard: React.FC<HireWizardProps> = ({ onClose, onComplete }) => {
+const HireWizard: React.FC<HireWizardProps> = ({ isOpen = true, onClose, onComplete }) => {
     const [step, setStep] = useState(1);
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -212,6 +213,8 @@ const HireWizard: React.FC<HireWizardProps> = ({ onClose, onComplete }) => {
     };
 
     const totalSteps = 5;
+
+    if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fadeIn">

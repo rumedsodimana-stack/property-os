@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Network, Shield, ShieldAlert, Cpu, Printer, CreditCard, ScanLine, Key, Wifi, RefreshCw, CheckCircle, AlertOctagon, XCircle, Settings, Lock } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../services/kernel/firebase';
@@ -19,6 +19,8 @@ const HardwareCommandCenter: React.FC = () => {
     const [isScanning, setIsScanning] = useState(false);
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
     const [isApproving, setIsApproving] = useState(false);
+    const selectedDeviceRef = useRef<Device | null>(null);
+    selectedDeviceRef.current = selectedDevice;
 
     // Live sync with the Singularity Edge Node via Firestore
     useEffect(() => {
@@ -30,8 +32,9 @@ const HardwareCommandCenter: React.FC = () => {
             setDevices(liveDevices);
 
             // Update the selected device panel if it's currently open and its data changes
-            if (selectedDevice) {
-                const updatedSelected = liveDevices.find(d => d.id === selectedDevice.id);
+            const current = selectedDeviceRef.current;
+            if (current) {
+                const updatedSelected = liveDevices.find(d => d.id === current.id);
                 if (updatedSelected) setSelectedDevice(updatedSelected);
             }
         });

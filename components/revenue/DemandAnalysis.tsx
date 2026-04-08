@@ -258,7 +258,7 @@ const DemandAnalysis: React.FC = () => {
                 </thead>
                 <tbody>
                   {heatmapData.map((row) => {
-                    const avg = Math.round(row.weeks.reduce((s, w) => s + w, 0) / row.weeks.length);
+                    const weeks = row.weeks || []; const avg = weeks.length ? Math.round(weeks.reduce((s, w) => s + w, 0) / weeks.length) : 0;
                     return (
                       <tr key={row.month} className="border-b border-white/5">
                         <td className="py-2 pr-4 text-xs text-zinc-300 font-medium">{row.month}</td>

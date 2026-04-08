@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Plus, Trash2, Tag, DollarSign, Info } from 'lucide-react';
 
 interface TraitStepProps {
+    isOpen?: boolean;
     data: any[];
     onUpdate: (data: any[]) => void;
 }
 
-const TraitStep: React.FC<TraitStepProps> = ({ data, onUpdate }) => {
+const TraitStep: React.FC<TraitStepProps> = ({ isOpen = true, data, onUpdate }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newItem, setNewItem] = useState({
         name: '',
@@ -25,6 +26,8 @@ const TraitStep: React.FC<TraitStepProps> = ({ data, onUpdate }) => {
     const removeTrait = (id: string) => {
         onUpdate(data.filter(t => t.id !== id));
     };
+
+    if (!isOpen) return null;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">

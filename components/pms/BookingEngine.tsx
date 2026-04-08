@@ -5,11 +5,12 @@ import { Calendar, Users, Star, ArrowRight, Check } from 'lucide-react';
 import BookingModal from './BookingModal';
 
 interface BookingEngineProps {
+  isOpen?: boolean;
   onBook?: (roomTypeId: string) => void;
   onBookingComplete?: (reservationId: string) => void;
 }
 
-const BookingEngine: React.FC<BookingEngineProps> = ({ onBook, onBookingComplete }) => {
+const BookingEngine: React.FC<BookingEngineProps> = ({ isOpen = true, onBook, onBookingComplete }) => {
   const getDefaultDates = () => {
     const checkInDate = new Date();
     const checkOutDate = new Date(checkInDate);
@@ -43,6 +44,8 @@ const BookingEngine: React.FC<BookingEngineProps> = ({ onBook, onBookingComplete
     setShowBookingModal(false);
     setSelectedRoomType(null);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="space-y-8 animate-fadeIn pb-24">

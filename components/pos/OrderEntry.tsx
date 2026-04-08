@@ -325,7 +325,7 @@ const OrderEntry: React.FC<OrderEntryProps> = ({ table, existingOrder, onClose, 
                         <ChefHat size={32} />
                       </div>
                     )}
-                    {item.allergens.length > 0 && (
+                    {(item.allergens || []).length > 0 && (
                       <div className="absolute top-1 right-1 flex gap-1">
                         <span className="w-2 h-2 rounded-full bg-red-500"></span>
                       </div>

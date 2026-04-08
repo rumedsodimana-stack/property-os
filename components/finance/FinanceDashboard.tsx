@@ -1096,7 +1096,7 @@ const FinanceDashboard: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="space-y-4">
-                                        {selectedDraft.ingredients.map((ing: any, i) => (
+                                        {(selectedDraft.ingredients || []).map((ing: any, i) => (
                                             <tr key={i} className="bg-zinc-900/30 rounded-xl overflow-hidden">
                                                 <td className="px-4 py-3 text-zinc-300 rounded-l-xl border-l border-t border-b border-zinc-800 font-medium">{ing.name || 'Unknown Item'}</td>
                                                 <td className="px-4 py-3 text-right text-zinc-500 border-t border-b border-zinc-800">{ing.qty} {ing.unit}</td>

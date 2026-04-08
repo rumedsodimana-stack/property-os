@@ -396,13 +396,13 @@ const MenuEngineering: React.FC<MenuEngineeringProps> = ({ onBack }) => {
                                     <h3 className="text-zinc-200 font-medium mb-1 group-hover:text-white transition">{item.name}</h3>
 
                                     {/* Allergen Tags */}
-                                    {item.allergens.length > 0 && (
+                                    {(item.allergens || []).length > 0 && (
                                         <div className="flex gap-1 mt-2 mb-3">
-                                            {item.allergens.slice(0, 3).map(a => (
+                                            {(item.allergens || []).slice(0, 3).map(a => (
                                                 <span key={a} className="text-[8px] bg-rose-500/10 text-rose-400 px-1.5 py-0.5 rounded font-bold uppercase">{a}</span>
                                             ))}
-                                            {item.allergens.length > 3 && (
-                                                <span className="text-[8px] bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded">+{item.allergens.length - 3}</span>
+                                            {(item.allergens || []).length > 3 && (
+                                                <span className="text-[8px] bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded">+{(item.allergens || []).length - 3}</span>
                                             )}
                                         </div>
                                     )}
@@ -1087,7 +1087,7 @@ const MenuEngineering: React.FC<MenuEngineeringProps> = ({ onBack }) => {
                                                 <div className="flex items-center gap-6 text-xs text-zinc-500 mb-3">
                                                     <span>By {draft.createdBy}</span>
                                                     <span>{new Date(draft.createdAt).toLocaleDateString()}</span>
-                                                    <span>{draft.ingredients.length} ingredients</span>
+                                                    <span>{(draft.ingredients || []).length} ingredients</span>
                                                     {draft.prepTime && <span>{draft.prepTime + (draft.cookTime || 0)} min total</span>}
                                                 </div>
                                                 <div className="grid grid-cols-4 gap-4">
